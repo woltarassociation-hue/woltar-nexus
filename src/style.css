@@ -1249,6 +1249,52 @@ footer p {
   border: 1px solid rgba(200,0,0,0.18);
 }
 
+.db-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.db-feedback-link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+  cursor: pointer;
+  opacity: 0.8;
+  transition: opacity 0.18s;
+}
+
+.db-feedback-link:hover { opacity: 1; }
+
+.db-select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1.5px solid rgba(139,0,0,0.18);
+  border-radius: 12px;
+  font-size: 14px;
+  color: #1a1a2a;
+  background: #ffffff;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b0000' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  padding-right: 38px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.db-select:focus {
+  border-color: #1fa8dc;
+  box-shadow: 0 0 0 3px rgba(31,168,220,0.1);
+}
+
 .db-label {
   display: block;
   font-size: 10.5px;

@@ -83,6 +83,15 @@ const COLOR_PRESETS = [
   },
 ];
 
+const SECTION_MAP = {
+  actualites: { label: "Actualités", anchor: "#actualites" },
+  prevention:  { label: "Actualités", anchor: "#actualites" },
+  regles:      { label: "Actualités", anchor: "#actualites" },
+  evenements:  { label: "Événements", anchor: "#events" },
+  fanarts:     { label: "Fan-arts",   anchor: "#fanarts" },
+  rp:          { label: "RP",         anchor: "#rp" },
+};
+
 const EMPTY_FORM = {
   id: null,
   title: "",
@@ -191,7 +200,12 @@ export default function AssociationDashboard() {
       });
 
       if (status === "published") {
-        setFeedback({ type: "success", message: "Article publié — visible dans la section correspondante !" });
+        const dest = SECTION_MAP[form.category];
+        setFeedback({
+          type: "success",
+          message: `Article publié dans la section "${dest?.label || form.category}" du site.`,
+          anchor: dest?.anchor,
+        });
         setForm(EMPTY_FORM);
       } else {
         setFeedback({ type: "success", message: "Brouillon enregistré." });
@@ -232,7 +246,7 @@ export default function AssociationDashboard() {
       <div className="db-body">
         {/* ── Sidebar ── */}
         <aside className="db-sidebar">
-          <p className="db-sidebar-label">Catégorie</p>
+          <p className="db-sidebar-label">Sélectionner une catégorie</p>
           {CATEGORIES.map((cat) => (
             <button
               key={cat.id}
@@ -289,7 +303,16 @@ export default function AssociationDashboard() {
 
             {feedback && (
               <div className={`db-feedback db-feedback--${feedback.type}`}>
-                {feedback.type === "success" ? "✓" : "✕"} {feedback.message}
+                <span>{feedback.type === "success" ? "✓" : "✕"} {feedback.message}</span>
+                {feedback.anchor && (
+                  <a
+                    className="db-feedback-link"
+                    href={`/${feedback.anchor}`}
+                    onClick={() => navigate("/" + feedback.anchor)}
+                  >
+                    Voir sur le site →
+                  </a>
+                )}
               </div>
             )}
 
@@ -319,6 +342,19 @@ export default function AssociationDashboard() {
                   value={form.title}
                   onChange={(e) => set("title", e.target.value)}
                 />
+
+                <label className="db-label">Catégorie</label>
+                <select
+                  className="db-select"
+                  value={form.category}
+                  onChange={(e) => set("category", e.target.value)}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.icon}  {cat.label}
+                    </option>
+                  ))}
+                </select>
 
                 <label className="db-label">Résumé court</label>
                 <input
