@@ -16,7 +16,19 @@ const supabase = supabaseConfigured
   3. Retourne { record, syncOk, syncError } pour que le dashboard
      puisse afficher un message adapté.
 */
+const SUPABASE_TIMEOUT_MS = 6000;
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Supabase timeout")), ms)
+    ),
+  ]);
+}
+
 export async function saveArticle(article) {
+  // Sauvegarde locale en premier — toujours immédiate
   const local = upsertArticle(article);
 
   if (!supabase) {
@@ -24,14 +36,14 @@ export async function saveArticle(article) {
   }
 
   try {
-    const { data, error } = await supabase
-      .from("articles")
-      .upsert([{ ...article, id: local.id }])
-      .select();
+    const { data, error } = await withTimeout(
+      supabase.from("articles").upsert([{ ...article, id: local.id }]).select(),
+      SUPABASE_TIMEOUT_MS
+    );
     if (error) throw new Error(error.message);
     return { record: data[0] || local, syncOk: true, syncError: null };
   } catch (err) {
-    console.error("[saveArticle] Supabase sync failed (article saved locally):", err);
+    console.error("[saveArticle] Supabase sync failed (article saved locally):", err.message);
     return { record: local, syncOk: false, syncError: err.message };
   }
 }

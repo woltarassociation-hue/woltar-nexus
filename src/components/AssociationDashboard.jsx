@@ -227,20 +227,22 @@ export default function AssociationDashboard() {
 
       if (status === "published") {
         const dest = SECTION_MAP[form.category];
+        const articleRoute = `/${form.category}/${record.slug}`;
         setFeedback({
           type: syncError ? "warning" : "success",
           message: syncError
-            ? `Article publié localement dans "${dest?.label || form.category}". (Sync Supabase échouée — pas de panique, l'article est bien là.)`
-            : `Article publié dans la catégorie "${dest?.label || form.category}".${syncOk ? " (Supabase ✓)" : ""}`,
-          route: dest?.route,
+            ? `✓ Article publié dans "${dest?.label || form.category}" (sauvegardé localement).`
+            : `✓ Article publié dans "${dest?.label || form.category}".`,
+          route: articleRoute,
+          routeLabel: "Voir l'article →",
         });
         setForm(EMPTY_FORM);
       } else {
         setFeedback({
           type: syncError ? "warning" : "success",
           message: syncError
-            ? `Brouillon enregistré localement. (Sync Supabase échouée.)`
-            : "Brouillon enregistré.",
+            ? "✓ Brouillon enregistré localement."
+            : "✓ Brouillon enregistré.",
         });
         setForm((f) => ({ ...f, id: record.id, coverUrl, coverFile: null }));
       }
@@ -392,13 +394,13 @@ export default function AssociationDashboard() {
 
             {feedback && (
               <div className={`db-feedback db-feedback--${feedback.type}`}>
-                <span>{feedback.type === "success" ? "✓" : "✕"} {feedback.message}</span>
+                <span>{feedback.message}</span>
                 {feedback.route && (
                   <button
                     className="db-feedback-link"
                     onClick={() => navigate(feedback.route)}
                   >
-                    Voir sur le site →
+                    {feedback.routeLabel || "Voir sur le site →"}
                   </button>
                 )}
               </div>
