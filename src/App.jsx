@@ -390,10 +390,15 @@ function WorkInProgress() {
   return (
     <div className="work-in-progress">
       <div className="work-in-progress-panel">
+        <div className="wip-glow-red" />
+        <div className="wip-glow-blue" />
+        <div className="wip-grid-lines" />
         <div className="work-in-progress-content">
-          <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+          <span className="work-in-progress-icon">⚙</span>
+          <div className="work-in-progress-title">Travaux en cours</div>
           <div className="work-in-progress-text">
-            Cette section est actuellement en reconstruction.
+            Cette section est en cours de construction.<br />
+            L'univers Woltar continue d'évoluer.
           </div>
         </div>
       </div>
