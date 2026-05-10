@@ -6,6 +6,7 @@ import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { saveCandidature } from "./lib/candidatures.js";
+import { authenticate, setSession } from "./lib/profiles.js";
 import "./style.css";
 
 const stats = [
@@ -125,9 +126,23 @@ function MainSite() {
   const [nomWoltarien, setNomWoltarien] = useState("");
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
   const [rpSubmitted, setRpSubmitted] = useState(false);
+  const [assocUser, setAssocUser] = useState("");
+  const [assocPass, setAssocPass] = useState("");
+  const [assocError, setAssocError] = useState(false);
 
   const allCategories = Object.keys(CATEGORY_META);
   const recentArticles = usePublishedArticles(allCategories).slice(0, 4);
+
+  const [affiche, setAffiche] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("woltar_affiche") || "null"); } catch { return null; }
+  });
+  useEffect(() => {
+    const reload = () => {
+      try { setAffiche(JSON.parse(localStorage.getItem("woltar_affiche") || "null")); } catch { setAffiche(null); }
+    };
+    window.addEventListener("woltar:affiche", reload);
+    return () => window.removeEventListener("woltar:affiche", reload);
+  }, []);
 
   // Carousel : articles publiés en priorité, fallback statique
   const carouselArticles = usePublishedArticles(CAROUSEL_CATS);
@@ -188,6 +203,24 @@ function MainSite() {
           </div>
         </div>
       </section>
+
+      {/* ── Affiche événement (si définie) ── */}
+      {affiche?.imageUrl && (
+        <div className="affiche-banner">
+          {affiche.link ? (
+            <a href={affiche.link} className="affiche-banner-inner">
+              <img src={affiche.imageUrl} alt={affiche.title || "Affiche"} className="affiche-banner-img" onError={(e) => { e.target.style.display = "none"; }} />
+              {affiche.title && <div className="affiche-banner-label">{affiche.title}</div>}
+              <div className="affiche-banner-cta">Voir l'événement →</div>
+            </a>
+          ) : (
+            <div className="affiche-banner-inner affiche-banner-inner--static">
+              <img src={affiche.imageUrl} alt={affiche.title || "Affiche"} className="affiche-banner-img" onError={(e) => { e.target.style.display = "none"; }} />
+              {affiche.title && <div className="affiche-banner-label">{affiche.title}</div>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Catégories en vedette ── */}
       <section className="section home-categories-section">
@@ -335,17 +368,51 @@ function MainSite() {
         <div className="association-access">
           <div className="association-access-panel">
             <div className="association-access-icon">◇</div>
-            <div className="association-access-title">Studio de publication</div>
-            <p className="association-access-text">
-              Accédez au studio de création pour rédiger, mettre en forme et
-              publier les articles de l'association Woltar.
-            </p>
-            <button
-              className="association-login-btn"
-              onClick={() => navigate("/association/dashboard")}
+            <div className="association-access-title">Accès membres</div>
+
+            <form
+              className="association-login-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const profile = authenticate(assocUser, assocPass);
+                if (profile) {
+                  setSession(profile);
+                  navigate("/association/dashboard");
+                } else {
+                  setAssocError(true);
+                  setAssocPass("");
+                }
+              }}
             >
-              Ouvrir le studio →
-            </button>
+              <div className="assoc-field">
+                <label className="assoc-label">Identifiant</label>
+                <input
+                  className="assoc-input"
+                  type="text"
+                  autoComplete="username"
+                  value={assocUser}
+                  onChange={(e) => { setAssocUser(e.target.value); setAssocError(false); }}
+                  placeholder="Votre identifiant"
+                />
+              </div>
+              <div className="assoc-field">
+                <label className="assoc-label">Mot de passe</label>
+                <input
+                  className="assoc-input"
+                  type="password"
+                  autoComplete="current-password"
+                  value={assocPass}
+                  onChange={(e) => { setAssocPass(e.target.value); setAssocError(false); }}
+                  placeholder="••••••••"
+                />
+              </div>
+              {assocError && (
+                <p className="assoc-error">Identifiants incorrects.</p>
+              )}
+              <button type="submit" className="association-login-btn">
+                Ouvrir le tableau de bord →
+              </button>
+            </form>
           </div>
         </div>
       </Section>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { saveArticle, uploadCoverImage } from "../lib/supabase";
 import { getAllArticles, deleteArticle, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
+import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -255,7 +256,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {section === "studio" ? "Studio de publication" : "Candidatures RP"}
+            {{ studio: "Studio de publication", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -271,10 +272,31 @@ export default function AssociationDashboard() {
           >
             🎭 Candidatures RP
           </button>
+          <button
+            className={`db-nav-btn${section === "affiche" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("affiche")}
+          >
+            🖼 Affiche événement
+          </button>
+          <button
+            className={`db-nav-btn${section === "profils" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("profils")}
+          >
+            👥 Profils
+          </button>
         </div>
+        <button
+          className="db-logout-btn"
+          title="Se déconnecter"
+          onClick={() => { clearSession(); navigate("/"); }}
+        >
+          ⎋ Déconnexion
+        </button>
       </header>
 
       {section === "candidatures" && <RPDashboard />}
+      {section === "affiche" && <AfficheSection />}
+      {section === "profils" && <ProfilesSection />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -558,6 +580,345 @@ function ColorPicker({ label, value, onChange }) {
         />
       </div>
       <span className="cp-hex">{value}</span>
+    </div>
+  );
+}
+
+/* ── Profils & Accès ────────────────────────────────────── */
+
+const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "", password: "" };
+
+function ProfilesSection() {
+  const session = getSession();
+  const [profiles, setProfiles] = useState(() => getProfiles());
+  const [form, setForm] = useState(EMPTY_PROFILE);
+  const [editing, setEditing] = useState(false);
+  const [showPass, setShowPass] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    const refresh = () => setProfiles(getProfiles());
+    window.addEventListener("woltar:profiles", refresh);
+    return () => window.removeEventListener("woltar:profiles", refresh);
+  }, []);
+
+  const setF = (key, val) => { setForm((f) => ({ ...f, [key]: val })); setSaved(false); };
+
+  const handleEdit = (profile) => {
+    setForm({ ...profile });
+    setEditing(true);
+    setSaved(false);
+  };
+
+  const handleNew = () => {
+    setForm(EMPTY_PROFILE);
+    setEditing(true);
+    setSaved(false);
+  };
+
+  const handleSave = () => {
+    if (!form.username.trim() || !form.name.trim() || !form.password.trim()) return;
+    const conflict = profiles.find(
+      (p) => p.username.toLowerCase() === form.username.toLowerCase() && p.id !== form.id
+    );
+    if (conflict) { alert("Cet identifiant est déjà utilisé par un autre profil."); return; }
+    saveProfile(form);
+    setEditing(false);
+    setSaved(true);
+    setForm(EMPTY_PROFILE);
+  };
+
+  const handleDelete = (id) => {
+    if (profiles.length <= 1) { alert("Impossible de supprimer le dernier profil."); return; }
+    if (!window.confirm("Supprimer ce profil définitivement ?")) return;
+    deleteProfile(id);
+  };
+
+  const handleCancel = () => { setEditing(false); setForm(EMPTY_PROFILE); };
+
+  const roleColor = { admin: "#8b0000", artiste: "#1fa8dc", communication: "#1a7a3c", custom: "#7a4fa0" };
+
+  return (
+    <div className="prof-section">
+      <div className="prof-header">
+        <div>
+          <h2 className="prof-heading">Profils &amp; Accès</h2>
+          <p className="prof-desc">
+            Gérez les comptes ayant accès au tableau de bord. Chaque profil possède son propre identifiant et mot de passe.
+            {session && <span className="prof-session"> Connecté en tant que <strong>{session.name}</strong>.</span>}
+          </p>
+          <p className="prof-note">⚠ Les identifiants sont stockés localement sur cet appareil.</p>
+        </div>
+        {!editing && (
+          <button className="prof-new-btn" onClick={handleNew}>
+            + Nouveau profil
+          </button>
+        )}
+      </div>
+
+      {/* Form */}
+      {editing && (
+        <div className="prof-form">
+          <h3 className="prof-form-title">{form.id ? "Modifier le profil" : "Nouveau profil"}</h3>
+          <div className="prof-form-grid">
+            <div className="prof-form-field">
+              <label className="prof-label">Nom du profil</label>
+              <input
+                className="db-input"
+                placeholder="Ex : Communication"
+                value={form.name}
+                onChange={(e) => setF("name", e.target.value)}
+              />
+            </div>
+            <div className="prof-form-field">
+              <label className="prof-label">Rôle</label>
+              <select className="db-select" value={form.role} onChange={(e) => setF("role", e.target.value)}>
+                {Object.entries(ROLE_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div className="prof-form-field">
+              <label className="prof-label">Identifiant de connexion</label>
+              <input
+                className="db-input"
+                placeholder="Ex : mario.comm"
+                value={form.username}
+                onChange={(e) => setF("username", e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="prof-form-field">
+              <label className="prof-label">Mot de passe</label>
+              <div className="prof-pass-wrap">
+                <input
+                  className="db-input prof-pass-input"
+                  type={showPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={(e) => setF("password", e.target.value)}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  className="prof-pass-toggle"
+                  onClick={() => setShowPass((v) => !v)}
+                  title={showPass ? "Masquer" : "Afficher"}
+                >
+                  {showPass ? "🙈" : "👁"}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="prof-form-actions">
+            <button className="db-btn db-btn--publish" onClick={handleSave}>
+              {form.id ? "Enregistrer les modifications" : "Créer le profil"}
+            </button>
+            <button className="db-btn db-btn--cancel" onClick={handleCancel}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* Profiles list */}
+      <div className="prof-list">
+        {profiles.map((p) => (
+          <div key={p.id} className="prof-card">
+            <div className="prof-card-left">
+              <span
+                className="prof-role-dot"
+                style={{ background: roleColor[p.role] || "#999" }}
+                title={ROLE_LABELS[p.role] || p.role}
+              />
+              <div className="prof-card-info">
+                <span className="prof-card-name">{p.name}</span>
+                <span className="prof-card-username">@{p.username}</span>
+              </div>
+              <span
+                className="prof-role-badge"
+                style={{ background: `${roleColor[p.role] || "#999"}18`, color: roleColor[p.role] || "#999" }}
+              >
+                {ROLE_LABELS[p.role] || p.role}
+              </span>
+              {session?.id === p.id && (
+                <span className="prof-you-badge">Vous</span>
+              )}
+            </div>
+            <div className="prof-card-actions">
+              <button className="prof-action-btn prof-action-btn--edit" onClick={() => handleEdit(p)}>
+                ✏ Modifier
+              </button>
+              <button
+                className="prof-action-btn prof-action-btn--delete"
+                onClick={() => handleDelete(p.id)}
+                disabled={profiles.length <= 1}
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Affiche événement ──────────────────────────────────── */
+
+const AFFICHE_KEY = "woltar_affiche";
+
+function AfficheSection() {
+  const fileRef = useRef(null);
+  const [affiche, setAffiche] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(AFFICHE_KEY) || "null"); } catch { return null; }
+  });
+  const [form, setForm] = useState({
+    title: affiche?.title || "",
+    link: affiche?.link || "",
+    imageUrl: affiche?.imageUrl || "",
+    imageFile: null,
+    preview: affiche?.imageUrl || null,
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const setF = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    setF("imageFile", file);
+    setF("preview", URL.createObjectURL(file));
+    setSaved(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    handleFile(e.dataTransfer.files[0]);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    let imageUrl = form.imageUrl;
+    if (form.imageFile) {
+      imageUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(form.imageFile);
+      });
+    }
+    const record = { title: form.title, link: form.link, imageUrl, updatedAt: new Date().toISOString() };
+    localStorage.setItem(AFFICHE_KEY, JSON.stringify(record));
+    window.dispatchEvent(new Event("woltar:affiche"));
+    setAffiche(record);
+    setF("imageUrl", imageUrl);
+    setF("imageFile", null);
+    setSaving(false);
+    setSaved(true);
+  };
+
+  const handleClear = () => {
+    if (!window.confirm("Retirer l'affiche de la page d'accueil ?")) return;
+    localStorage.removeItem(AFFICHE_KEY);
+    window.dispatchEvent(new Event("woltar:affiche"));
+    setAffiche(null);
+    setForm({ title: "", link: "", imageUrl: "", imageFile: null, preview: null });
+    setSaved(false);
+  };
+
+  return (
+    <div className="affiche-section">
+      <div className="affiche-intro">
+        <h2 className="affiche-heading">Affiche à la une</h2>
+        <p className="affiche-desc">
+          Cette affiche s'affiche en grand sur la page d'accueil pour mettre un événement en valeur.
+          Importez votre image d'affiche, ajoutez un titre et un lien facultatif.
+        </p>
+      </div>
+
+      <div className="affiche-layout">
+        {/* Form */}
+        <div className="affiche-form">
+          <label className="db-label">Titre de l'événement</label>
+          <input
+            className="db-input"
+            placeholder="Ex : Event anniversaire 3 ans"
+            value={form.title}
+            onChange={(e) => { setF("title", e.target.value); setSaved(false); }}
+          />
+
+          <label className="db-label">Lien (facultatif)</label>
+          <input
+            className="db-input"
+            placeholder="https://… ou /evenements"
+            value={form.link}
+            onChange={(e) => { setF("link", e.target.value); setSaved(false); }}
+          />
+
+          <label className="db-label">Image de l'affiche</label>
+          <div
+            className="affiche-upload"
+            onClick={() => fileRef.current.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleDrop}
+          >
+            {form.preview ? (
+              <>
+                <img src={form.preview} alt="Affiche" className="affiche-upload-img" />
+                <div className="affiche-upload-change">Changer l'image</div>
+              </>
+            ) : (
+              <div className="affiche-upload-empty">
+                <span className="affiche-upload-icon">🖼</span>
+                <span>Cliquez ou glissez l'affiche ici</span>
+                <span className="affiche-upload-hint">PNG · JPG · WEBP</span>
+              </div>
+            )}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+
+          <div className="affiche-actions">
+            <button
+              className="db-btn db-btn--publish"
+              onClick={handleSave}
+              disabled={saving || (!form.preview && !form.imageUrl)}
+            >
+              {saving ? "Enregistrement…" : saved ? "✓ Affiché sur le site" : "Mettre en avant →"}
+            </button>
+            {affiche && (
+              <button className="db-btn db-btn--cancel" onClick={handleClear}>
+                Retirer l'affiche
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Preview */}
+        <div className="affiche-preview-wrap">
+          <p className="db-sidebar-label">Aperçu</p>
+          <div className="affiche-preview">
+            {form.preview ? (
+              <img src={form.preview} alt="Aperçu affiche" className="affiche-preview-img" />
+            ) : (
+              <div className="affiche-preview-empty">
+                <span>Aucune affiche</span>
+              </div>
+            )}
+            {form.title && (
+              <div className="affiche-preview-title">{form.title}</div>
+            )}
+          </div>
+          {affiche && (
+            <p className="affiche-status">
+              ✦ Actuellement affichée depuis le {new Date(affiche.updatedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

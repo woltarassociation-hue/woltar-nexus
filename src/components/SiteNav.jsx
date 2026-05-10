@@ -1,26 +1,79 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-const NAV_LINKS = [
+const LEFT_LINKS = [
   { label: "Accueil",    icon: "🏠",  to: "/",           isHash: false },
   { label: "Histoire",   icon: "📖",  to: "/#histoire",  isHash: true },
   { label: "Actualités", icon: "✦",   to: "/actualites", isHash: false },
   { label: "Événements", icon: "🎪",  to: "/evenements", isHash: false },
+];
+
+const RIGHT_LINKS = [
   { label: "Fan-arts",   icon: "🎨",  to: "/fanarts",    isHash: false },
   { label: "RP",         icon: "🎭",  to: "/rp",         isHash: false },
   { label: "Équipe",     icon: "👥",  to: "/#equipes",   isHash: true },
 ];
 
+function NavLink({ link, active, onClick }) {
+  const cls = `nav-link${active ? " nav-link--current" : ""}`;
+  if (link.isHash) {
+    return (
+      <a href={link.to} className={cls} onClick={onClick}>
+        <span className="nav-symbol">{link.icon}</span>
+        <span>{link.label}</span>
+      </a>
+    );
+  }
+  return (
+    <Link to={link.to} className={cls} onClick={onClick}>
+      <span className="nav-symbol">{link.icon}</span>
+      <span>{link.label}</span>
+    </Link>
+  );
+}
+
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const close = () => setOpen(false);
 
   return (
     <header className="navbar">
-      <Link to="/" className="nav-brand" onClick={() => setOpen(false)}>
+      {/* Left links — desktop */}
+      <nav className="nav-left">
+        {LEFT_LINKS.map((link) => (
+          <NavLink
+            key={link.label}
+            link={link}
+            active={!link.isHash && pathname === link.to}
+            onClick={close}
+          />
+        ))}
+      </nav>
+
+      {/* Logo centré — imposant */}
+      <Link to="/" className="nav-brand" onClick={close}>
         <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
+        <span className="nav-wordmark">woltar.net</span>
       </Link>
 
+      {/* Right links — desktop */}
+      <nav className="nav-right">
+        {RIGHT_LINKS.map((link) => (
+          <NavLink
+            key={link.label}
+            link={link}
+            active={!link.isHash && pathname === link.to}
+            onClick={close}
+          />
+        ))}
+        <a href="/#association" className="nav-link nav-link--association" onClick={close}>
+          <span className="nav-symbol">◇</span>
+          <span>Association</span>
+        </a>
+      </nav>
+
+      {/* Hamburger — mobile only */}
       <button
         className={`nav-hamburger${open ? " is-open" : ""}`}
         onClick={() => setOpen((v) => !v)}
@@ -30,43 +83,23 @@ export default function SiteNav() {
         <span /><span /><span />
       </button>
 
-      <nav className={`nav-links${open ? " is-open" : ""}`}>
-        {NAV_LINKS.map((link) => {
-          const isActive = !link.isHash && pathname === link.to;
-          if (link.isHash) {
-            return (
-              <a
-                key={link.label}
-                href={link.to}
-                className="nav-link"
-                onClick={() => setOpen(false)}
-              >
-                <span className="nav-symbol">{link.icon}</span>
-                <span>{link.label}</span>
-              </a>
-            );
-          }
-          return (
-            <Link
+      {/* Mobile dropdown */}
+      {open && (
+        <div className="nav-mobile">
+          {[...LEFT_LINKS, ...RIGHT_LINKS].map((link) => (
+            <NavLink
               key={link.label}
-              to={link.to}
-              className={`nav-link${isActive ? " nav-link--current" : ""}`}
-              onClick={() => setOpen(false)}
-            >
-              <span className="nav-symbol">{link.icon}</span>
-              <span>{link.label}</span>
-            </Link>
-          );
-        })}
-        <a
-          href="/#association"
-          className="nav-link nav-link--association"
-          onClick={() => setOpen(false)}
-        >
-          <span className="nav-symbol">◇</span>
-          <span>Association</span>
-        </a>
-      </nav>
+              link={link}
+              active={!link.isHash && pathname === link.to}
+              onClick={close}
+            />
+          ))}
+          <a href="/#association" className="nav-link nav-link--association" onClick={close}>
+            <span className="nav-symbol">◇</span>
+            <span>Association</span>
+          </a>
+        </div>
+      )}
     </header>
   );
 }
