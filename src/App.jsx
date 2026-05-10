@@ -46,7 +46,6 @@ export default function App() {
   {sections.map((section) => (
     <a key={section.id} href={`#${section.id}`} className="nav-item">
       <img src={section.icon} alt="" className="nav-icon" />
-      <span>{section.label}</span>
     </a>
   ))}
 </nav>
