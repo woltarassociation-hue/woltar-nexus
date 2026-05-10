@@ -123,6 +123,9 @@ body {
   color: white;
   box-shadow: 0 30px 80px rgba(0,0,0,0.3);
   animation: fadeUp 0.8s ease;
+  min-height: 500px;
+  display: flex;
+  align-items: stretch;
 }
 
 .tag {
@@ -502,6 +505,10 @@ footer {
   .hero {
     grid-template-columns: 1fr;
     padding: 40px 6% 80px;
+  }
+
+  .hero-content {
+    min-height: auto;
   }
 
   .cards-grid,

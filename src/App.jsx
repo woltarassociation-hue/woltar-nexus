@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./style.css";
 
 const sections = [
@@ -21,6 +21,17 @@ const stats = [
   "Force",
 ];
 
+const newsArticles = [
+  {
+    id: 1,
+    category: "Animation RP",
+    title: "Event anniversaire 3 ans",
+    accroche: "Event Woltar 2026",
+    text: "Entrez dans l'arène ! Évènement inédit pour l'approche des 3 ans de woltar.net",
+    image: "/Affiche_Entrez_dans_larene.png",
+  },
+];
+
 export default function App() {
   const [values, setValues] = useState(
     Object.fromEntries(stats.map((stat) => [stat, 5]))
@@ -28,9 +39,17 @@ export default function App() {
   const [showFormRp, setShowFormRp] = useState(false);
   const [pseudoJoueur, setPseudoJoueur] = useState("");
   const [nomWoltarien, setNomWoltarien] = useState("");
+  const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
 
   const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
   const remaining = 40 - total;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentNewsIndex((prev) => (prev + 1) % newsArticles.length);
+    }, 20000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleStat = (stat, value) => {
     const clean = Math.max(0, Math.min(10, Number(value)));
@@ -55,22 +74,7 @@ export default function App() {
 
       <section id="accueil" className="hero">
         <div className="hero-content">
-          <span className="tag">Event Woltar 2026</span>
-          <h1>Woltar.net Event Hub</h1>
-          <p>
-            Un espace communautaire pour célébrer Woltar.net, organiser les
-            évènements RP, partager les fan-arts et réunir les joueurs autour
-            de l’univers Woltar.
-          </p>
-
-          <div className="hero-actions">
-            <a href="#formulaires" className="primary-btn">
-              Participer à l’event
-            </a>
-            <a href="#histoire" className="secondary-btn">
-              Découvrir Woltar
-            </a>
-          </div>
+          <Carousel articles={newsArticles} currentIndex={currentNewsIndex} setCurrentIndex={setCurrentNewsIndex} />
         </div>
 
         <div className="hero-card">
@@ -287,29 +291,16 @@ export default function App() {
 
       <Section id="equipes" title="Équipes">
         <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px", marginBottom: "40px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Organisation</h3>
+          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Membres</h3>
           <div className="cards-grid">
-            <Card title="Présentation" text="Qui nous sommes et nos objectifs." />
             <Card title="Membres" text="L’équipe fondatrice de Woltar.net." />
-            <Card title="Contact" text="Nous rejoindre ou nous contacter." />
-          </div>
-        </div>
-
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px", marginBottom: "40px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Association</h3>
-          <div className="cards-grid">
-            <Card title="Présentation" text="Qui nous sommes et nos objectifs." />
-            <Card title="Membres" text="L’équipe fondatrice de Woltar.net." />
-            <Card title="Contact" text="Nous rejoindre ou nous contacter." />
           </div>
         </div>
 
         <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Équipe Modération Discord</h3>
+          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Contact</h3>
           <div className="cards-grid">
-            <Card title="Modérateurs" text="L’équipe qui encadre les discussions." />
-            <Card title="Règles Discord" text="Normes et bonnes pratiques." />
-            <Card title="Support" text="Signaler un problème ou proposer une aide." />
+            <Card title="Contact" text="Nous rejoindre ou nous contacter." />
           </div>
         </div>
       </Section>
@@ -344,6 +335,137 @@ function Card({ title, text, onClick, isClickable }) {
     >
       <h3>{title}</h3>
       <p>{text}</p>
+    </div>
+  );
+}
+
+function Carousel({ articles, currentIndex, setCurrentIndex }) {
+  if (articles.length === 0) return null;
+  const current = articles[currentIndex];
+
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          overflow: "hidden",
+          borderRadius: "28px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            transition: "opacity 0.8s ease-in-out",
+            opacity: 1,
+            width: "100%",
+            height: "100%",
+          }}
+        >
+          <div
+            style={{
+              flex: "1 0 100%",
+              backgroundImage: `url(${current.image})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              position: "relative",
+              borderRadius: "28px",
+            }}
+          >
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0) 100%)",
+                borderRadius: "28px",
+                display: "flex",
+                flexDirection: "column",
+                justifyContent: "flex-end",
+                padding: "40px",
+                color: "white",
+              }}
+            >
+              <span
+                style={{
+                  display: "inline-block",
+                  background: "rgba(255,255,255,0.3)",
+                  color: "white",
+                  fontWeight: "bold",
+                  padding: "8px 16px",
+                  borderRadius: "999px",
+                  marginBottom: "16px",
+                  width: "fit-content",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                {current.category}
+              </span>
+              <h2
+                style={{
+                  fontSize: "clamp(28px, 5vw, 48px)",
+                  fontWeight: "bold",
+                  marginBottom: "12px",
+                  textShadow: "0 4px 12px rgba(0,0,0,0.5)",
+                }}
+              >
+                {current.title}
+              </h2>
+              <p
+                style={{
+                  fontSize: "18px",
+                  lineHeight: "1.6",
+                  marginBottom: "16px",
+                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
+                }}
+              >
+                {current.text}
+              </p>
+              <span
+                style={{
+                  display: "inline-block",
+                  fontSize: "14px",
+                  fontStyle: "italic",
+                  opacity: 0.9,
+                }}
+              >
+                {current.accroche}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          gap: "12px",
+          marginTop: "24px",
+        }}
+      >
+        {articles.map((_, idx) => (
+          <button
+            key={idx}
+            onClick={() => setCurrentIndex(idx)}
+            style={{
+              width: "12px",
+              height: "12px",
+              borderRadius: "50%",
+              border: "2px solid white",
+              background: idx === currentIndex ? "white" : "rgba(255,255,255,0.4)",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = "scale(1.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = "scale(1)";
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
