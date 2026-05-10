@@ -12,14 +12,8 @@ const sections = [
 ];
 
 const stats = [
-  "Agilité",
-  "Perception",
-  "Chance",
-  "Mémoire",
-  "Intelligence",
-  "Créativité",
-  "Charisme",
-  "Force",
+  "Agilité", "Perception", "Chance", "Mémoire",
+  "Intelligence", "Créativité", "Charisme", "Force",
 ];
 
 const newsSlides = [
@@ -61,6 +55,7 @@ export default function App() {
   const [pseudoJoueur, setPseudoJoueur] = useState("");
   const [nomWoltarien, setNomWoltarien] = useState("");
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
+  const [navOpen, setNavOpen] = useState(false);
 
   const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
   const remaining = 40 - total;
@@ -82,19 +77,33 @@ export default function App() {
       <div className="red-pattern" />
 
       <header className="navbar">
-  <a href="#accueil" className="nav-brand">
-    <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
-  </a>
+        <a href="#accueil" className="nav-brand">
+          <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
+        </a>
 
-  <nav className="nav-links">
-    {sections.map((section) => (
-      <a key={section.id} href={`#${section.id}`} className="nav-link">
-        <span className="nav-symbol">{section.icon}</span>
-        <span>{section.label}</span>
-      </a>
-    ))}
-  </nav>
-</header>
+        <button
+          className={`nav-hamburger${navOpen ? " is-open" : ""}`}
+          onClick={() => setNavOpen((v) => !v)}
+          aria-label="Menu"
+          aria-expanded={navOpen}
+        >
+          <span /><span /><span />
+        </button>
+
+        <nav className={`nav-links${navOpen ? " is-open" : ""}`}>
+          {sections.map((section) => (
+            <a
+              key={section.id}
+              href={`#${section.id}`}
+              className="nav-link"
+              onClick={() => setNavOpen(false)}
+            >
+              <span className="nav-symbol">{section.icon}</span>
+              <span>{section.label}</span>
+            </a>
+          ))}
+        </nav>
+      </header>
 
       <section id="accueil" className="hero">
         <div className="hero-content">
@@ -104,35 +113,35 @@ export default function App() {
         <div className="hero-card">
           <h2>Bienvenue sur Woltar</h2>
           <p>
-            Un système planétaire perdu dans l’espace, habité par les
+            Un système planétaire perdu dans l'espace, habité par les
             Woltariens, Woltariennes et Woltarions.
           </p>
         </div>
       </section>
-<Section id="actualites" title="Actualités">
-  <div className="cards-grid">
-       <Card
-      title="Actualités"
-      text="Mises à jour, nouveautés et annonces générales."
-      smallText="Mise à jour, nouveautés, etc..."
-      onClick={() => setCurrentNewsIndex(1)}
-      isClickable
-    />
-    <Card
-      title="Prévention"
-      text="Affiches, rappels et sensibilisation communautaire."
-      onClick={() => setCurrentNewsIndex(2)}
-      isClickable
-    />
 
-    <Card
-      title="Règles"
-      text="Droits d’auteur, cadre communautaire et règles de vie."
-      onClick={() => setCurrentNewsIndex(3)}
-      isClickable
-    />
-  </div>
-</Section>
+      <Section id="actualites" title="Actualités">
+        <div className="cards-grid">
+          <Card
+            title="Actualités"
+            text="Mises à jour, nouveautés et annonces générales."
+            onClick={() => setCurrentNewsIndex(1)}
+            isClickable
+          />
+          <Card
+            title="Prévention"
+            text="Affiches, rappels et sensibilisation communautaire."
+            onClick={() => setCurrentNewsIndex(2)}
+            isClickable
+          />
+          <Card
+            title="Règles"
+            text="Droits d'auteur, cadre communautaire et règles de vie."
+            onClick={() => setCurrentNewsIndex(3)}
+            isClickable
+          />
+        </div>
+      </Section>
+
       <Section id="histoire" title="Woltar et son histoire">
         <div className="work-in-progress">
           <div className="work-in-progress-panel">
@@ -145,8 +154,8 @@ export default function App() {
       </Section>
 
       <Section id="events" title="Événements">
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px", marginBottom: "40px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Event Officiel</h3>
+        <div className="event-box">
+          <h3 className="event-box-title">Event Officiel</h3>
           <div className="cards-grid">
             <Card title="Animations RP" text="Scènes, intrigues et défis narratifs." />
             <Card title="Concours" text="Créations, fan-arts et participations." />
@@ -160,142 +169,86 @@ export default function App() {
         </div>
 
         {showFormRp && (
-          <div style={{ background: "rgba(255,255,255,0.8)", borderRadius: "28px", padding: "40px", marginBottom: "40px" }}>
-            <p style={{ fontStyle: "italic", marginBottom: "24px", color: "#666" }}>
+          <div className="form-rp-box">
+            <p className="form-rp-disclaimer">
               Seul les joueurs ayant un compte et un woltarien(ne)s adultes peuvent s'inscrire
             </p>
 
             <div>
-              <label style={{ display: "block", fontWeight: "bold", color: "#8B0000", marginBottom: "8px", fontSize: "16px" }}>
+              <label className="form-label form-label--cyan">
                 Pseudo du joueur in game
               </label>
               <input
+                className="form-input"
                 placeholder="Votre pseudo"
                 value={pseudoJoueur}
                 onChange={(e) => setPseudoJoueur(e.target.value)}
-                style={{ width: "100%", padding: "12px", marginBottom: "24px", border: "2px solid #1fa8dc", borderRadius: "12px", fontSize: "15px" }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontWeight: "bold", marginBottom: "8px", fontSize: "16px", color: "#004477" }}>
+              <label className="form-label form-label--light">
                 Prénom et NOM du woltarien(ne) participant(e)
               </label>
               <input
+                className="form-input"
                 placeholder="Prénom et nom"
                 value={nomWoltarien}
                 onChange={(e) => setNomWoltarien(e.target.value)}
-                style={{ width: "100%", padding: "12px", marginBottom: "24px", border: "2px solid #1fa8dc", borderRadius: "12px", fontSize: "15px" }}
               />
             </div>
 
-            <h3 style={{ color: "#004477", marginBottom: "20px" }}>Répartition des points de caractéristiques (40 pts)</h3>
-            <p style={{ fontSize: "14px", opacity: 0.75, marginBottom: "24px", color: "#666" }}>
-              Min: 0 | Max: 10 par statistique | Total obligatoire: 40 points
-            </p>
+            <h3 className="form-stats-title">Répartition des points de caractéristiques (40 pts)</h3>
+            <p className="form-stats-hint">Min: 0 | Max: 10 par statistique | Total obligatoire: 40 points</p>
 
-            <div className="stats-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <div className="stats-form-grid">
               {stats.map((stat) => (
-                <div key={stat} style={{
-                  background: "linear-gradient(135deg, #fff 0%, #f0f4ff 100%)",
-                  border: "3px solid #004477",
-                  borderRadius: "8px",
-                  padding: "16px",
-                  boxShadow: "inset 0 2px 4px rgba(0,0,0,0.1)"
-                }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
-                    <span style={{ fontWeight: "bold", color: "#004477", fontSize: "14px" }}>{stat}</span>
-                    <span style={{ background: "#8B0000", color: "white", padding: "4px 10px", borderRadius: "4px", fontWeight: "bold", fontSize: "14px" }}>
-                      {values[stat]}/10
-                    </span>
+                <div key={stat} className="stat-card">
+                  <div className="stat-card-header">
+                    <span className="stat-card-name">{stat}</span>
+                    <span className="stat-card-value">{values[stat]}/10</span>
                   </div>
 
-                  <div style={{ background: "#1a1a2e", border: "2px solid #35b9ed", borderRadius: "6px", height: "20px", overflow: "hidden", marginBottom: "10px", boxShadow: "inset 0 2px 4px rgba(0,0,0,0.5)" }}>
-                    <div style={{
-                      background: `linear-gradient(90deg, #35b9ed 0%, #1fa8dc 50%, #0891b2 100%)`,
-                      height: "100%",
-                      width: `${(values[stat] / 10) * 100}%`,
-                      transition: "width 0.15s ease",
-                      boxShadow: "0 0 10px rgba(53,185,237,0.6)"
-                    }} />
+                  <div className="stat-bar-bg">
+                    <div
+                      className="stat-bar-fill"
+                      style={{ width: `${(values[stat] / 10) * 100}%` }}
+                    />
                   </div>
 
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                    <button onClick={() => handleStat(stat, Math.max(0, values[stat] - 1))} style={{
-                      background: "#8B0000",
-                      color: "white",
-                      border: "2px solid #600000",
-                      borderRadius: "4px",
-                      padding: "6px 12px",
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      transition: "all 0.1s"
-                    }} onMouseEnter={(e) => e.target.style.background = "#A00000"} onMouseLeave={(e) => e.target.style.background = "#8B0000"}>
-                      −
-                    </button>
-                    <button onClick={() => handleStat(stat, Math.min(10, values[stat] + 1))} style={{
-                      background: "#8B0000",
-                      color: "white",
-                      border: "2px solid #600000",
-                      borderRadius: "4px",
-                      padding: "6px 12px",
-                      fontWeight: "bold",
-                      cursor: "pointer",
-                      fontSize: "14px",
-                      transition: "all 0.1s"
-                    }} onMouseEnter={(e) => e.target.style.background = "#A00000"} onMouseLeave={(e) => e.target.style.background = "#8B0000"}>
-                      +
-                    </button>
+                  <div className="stat-card-controls">
+                    <button
+                      className="stat-btn"
+                      onClick={() => handleStat(stat, Math.max(0, values[stat] - 1))}
+                    >−</button>
+                    <button
+                      className="stat-btn"
+                      onClick={() => handleStat(stat, Math.min(10, values[stat] + 1))}
+                    >+</button>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div style={{ marginTop: "20px", padding: "16px", borderRadius: "12px", textAlign: "center", fontWeight: "bold", background: remaining === 0 ? "#ddffe8" : "#fff4d6", color: remaining === 0 ? "#087b35" : "#9a6100" }}>
+            <div className={`form-points${remaining === 0 ? " form-points--ok" : " form-points--warn"}`}>
               Total: {total}/40 — Points restants: {remaining}
             </div>
 
             <button
               disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
-              style={{
-                width: "100%",
-                padding: "16px",
-                marginTop: "20px",
-                borderRadius: "999px",
-                border: "none",
-                background: remaining === 0 && pseudoJoueur.trim() && nomWoltarien.trim() ? "linear-gradient(90deg, #8B0000, #1fa8dc)" : "#ccc",
-                color: "white",
-                fontWeight: "bold",
-                cursor: remaining === 0 && pseudoJoueur.trim() && nomWoltarien.trim() ? "pointer" : "not-allowed",
-                fontSize: "16px"
-              }}
+              className="form-submit-btn"
             >
               Envoyez sa candidature
             </button>
 
-            <button
-              onClick={() => setShowFormRp(false)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                marginTop: "12px",
-                borderRadius: "999px",
-                border: "2px solid #1fa8dc",
-                background: "transparent",
-                color: "#1fa8dc",
-                fontWeight: "bold",
-                cursor: "pointer",
-                fontSize: "14px"
-              }}
-            >
+            <button onClick={() => setShowFormRp(false)} className="form-close-btn">
               Fermer
             </button>
           </div>
         )}
 
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Event Joueurs</h3>
+        <div className="event-box">
+          <h3 className="event-box-title">Event Joueurs</h3>
           <div className="cards-grid">
             <Card title="Galerie" text="Espace dédié aux créations des joueurs." />
             <Card title="Annonces" text="Événements et activités communautaires." />
@@ -359,15 +312,11 @@ function Card({ title, text, onClick, isClickable }) {
     <div
       className="info-card"
       onClick={onClick}
-      style={{
-        cursor: isClickable ? "pointer" : "default",
-        transition: isClickable ? "all 0.2s" : "none"
-      }}
-      onMouseEnter={(e) => isClickable && (e.currentTarget.style.transform = "translateY(-8px) scale(1.02)")}
-      onMouseLeave={(e) => isClickable && (e.currentTarget.style.transform = "translateY(0) scale(1)")}
+      style={{ cursor: isClickable ? "pointer" : "default" }}
     >
       <h3>{title}</h3>
       <p>{text}</p>
+      {isClickable && <span className="info-card-cta">Voir →</span>}
     </div>
   );
 }
