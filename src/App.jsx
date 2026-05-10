@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import "./style.css";
 
 const sections = [
-  { id: "accueil", label: "Accueil", icon: "/icn_accueil/accueil_icn.png" },
-  { id: "histoire", label: "Woltar et son histoire", icon: "/icn_accueil/story_icn.png" },
-  { id: "events", label: "Événements", icon: "/icn_accueil/event_icn.png" },
-  { id: "fanarts", label: "Fan-arts", icon: "/icn_accueil/fanart_icn.png" },
-  { id: "rp", label: "RP", icon: "/icn_accueil/rp_icn.png" },
-  { id: "equipes", label: "Équipes", icon: "/icn_accueil/staff_icn.png" },
+  { id: "accueil", label: "Accueil", icon: "🏠" },
+  { id: "histoire", label: "Histoire", icon: "📖" },
+  { id: "actualites", label: "Actualités", icon: "✦" },
+  { id: "events", label: "Événements", icon: "🎪" },
+  { id: "fanarts", label: "Fan-arts", icon: "🎨" },
+  { id: "rp", label: "RP", icon: "🎭" },
+  { id: "equipes", label: "Équipe", icon: "👥" },
 ];
 
 const stats = [
@@ -21,14 +22,34 @@ const stats = [
   "Force",
 ];
 
-const newsArticles = [
+const newsSlides = [
   {
-    id: 1,
     category: "Événements 2026",
+    subcategory: "Animations RP",
     title: "Event anniversaire 3 ans",
-    accroche: "Entrez dans l'arène !",
-    text: "Évènement inédit pour l'approche des 3 ans de Woltar.net",
-    image: "/Affiche_Entrez_dans_larene.png",
+    text: "Entrez dans l'arène ! À l'approche des 3 ans de Woltar.net, un événement inédit se prépare. Défis RP, animations communautaires et surprises seront au rendez-vous pour célébrer l'univers Woltar.",
+    image: "/affiche_entrez_dans_larene.png",
+  },
+  {
+    category: "Événements 2026",
+    subcategory: "Animations RP",
+    title: "Animations RP à venir",
+    text: "Les prochaines animations RP communautaires arrivent bientôt. Préparez vos personnages, alliances et intrigues pour les futurs événements Woltar.",
+    image: "/logo_woltar.png",
+  },
+  {
+    category: "Actualités",
+    subcategory: "Prévention",
+    title: "L'IA n'est pas neutre",
+    text: "Cette affiche de prévention rappelle que l'utilisation de l'intelligence artificielle possède un impact réel sur les artistes, leurs œuvres et l'économie créative. Woltar.net encourage une utilisation responsable, transparente et respectueuse des créateurs.",
+    image: "/affiche_prevention_1.png",
+  },
+  {
+    category: "Actualités",
+    subcategory: "Règles",
+    title: "L'IA n'efface pas les droits d'auteur",
+    text: "Les règles de Woltar.net rappellent l'importance du respect des artistes et de leurs créations. Plagiat, imitation abusive et utilisation non autorisée d'œuvres sont interdits au sein de la communauté.",
+    image: "/affiche_regles_1.png",
   },
 ];
 
@@ -46,7 +67,7 @@ export default function App() {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentNewsIndex((prev) => (prev + 1) % newsArticles.length);
+      setCurrentNewsIndex((prev) => (prev + 1) % newsSlides.length);
     }, 20000);
     return () => clearInterval(timer);
   }, []);
@@ -61,20 +82,23 @@ export default function App() {
       <div className="red-pattern" />
 
       <header className="navbar">
-        <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
+  <a href="#accueil" className="nav-brand">
+    <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
+  </a>
 
-       <nav className="nav-icons">
-  {sections.map((section) => (
-    <a key={section.id} href={`#${section.id}`} className="nav-item">
-      <img src={section.icon} alt="" className="nav-icon" />
-    </a>
-  ))}
-</nav>
-      </header>
+  <nav className="nav-links">
+    {sections.map((section) => (
+      <a key={section.id} href={`#${section.id}`} className="nav-link">
+        <span className="nav-symbol">{section.icon}</span>
+        <span>{section.label}</span>
+      </a>
+    ))}
+  </nav>
+</header>
 
       <section id="accueil" className="hero">
         <div className="hero-content">
-          <Carousel articles={newsArticles} currentIndex={currentNewsIndex} setCurrentIndex={setCurrentNewsIndex} />
+          <Carousel slides={newsSlides} currentIndex={currentNewsIndex} setCurrentIndex={setCurrentNewsIndex} />
         </div>
 
         <div className="hero-card">
@@ -85,7 +109,30 @@ export default function App() {
           </p>
         </div>
       </section>
+<Section id="actualites" title="Actualités">
+  <div className="cards-grid">
+       <Card
+      title="Actualités"
+      text="Mises à jour, nouveautés et annonces générales."
+      smallText="Mise à jour, nouveautés, etc..."
+      onClick={() => setCurrentNewsIndex(1)}
+      isClickable
+    />
+    <Card
+      title="Prévention"
+      text="Affiches, rappels et sensibilisation communautaire."
+      onClick={() => setCurrentNewsIndex(2)}
+      isClickable
+    />
 
+    <Card
+      title="Règles"
+      text="Droits d’auteur, cadre communautaire et règles de vie."
+      onClick={() => setCurrentNewsIndex(3)}
+      isClickable
+    />
+  </div>
+</Section>
       <Section id="histoire" title="Woltar et son histoire">
         <div className="work-in-progress">
           <div className="work-in-progress-panel">
@@ -147,7 +194,7 @@ export default function App() {
               Min: 0 | Max: 10 par statistique | Total obligatoire: 40 points
             </p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+            <div className="stats-form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
               {stats.map((stat) => (
                 <div key={stat} style={{
                   background: "linear-gradient(135deg, #fff 0%, #f0f4ff 100%)",
@@ -325,132 +372,58 @@ function Card({ title, text, onClick, isClickable }) {
   );
 }
 
-function Carousel({ articles, currentIndex, setCurrentIndex }) {
-  if (articles.length === 0) return null;
-  const current = articles[currentIndex];
+function Carousel({ slides, currentIndex, setCurrentIndex }) {
+  if (!slides || slides.length === 0) return null;
+
+  const prev = () => setCurrentIndex((i) => (i - 1 + slides.length) % slides.length);
+  const next = () => setCurrentIndex((i) => (i + 1) % slides.length);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
-      <div
-        style={{
-          position: "relative",
-          width: "100%",
-          height: "100%",
-          overflow: "hidden",
-          borderRadius: "28px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            transition: "opacity 0.8s ease-in-out",
-            opacity: 1,
-            width: "100%",
-            height: "100%",
-          }}
-        >
+    <div className="carousel">
+      <div className="carousel-track">
+        {slides.map((slide, idx) => (
           <div
-            style={{
-              flex: "1 0 100%",
-              backgroundImage: `url(${current.image})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              position: "relative",
-              borderRadius: "28px",
-            }}
+            key={idx}
+            className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}
           >
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0) 100%)",
-                borderRadius: "28px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "flex-end",
-                padding: "40px",
-                color: "white",
-              }}
-            >
-              <span
-                style={{
-                  display: "inline-block",
-                  background: "rgba(255,255,255,0.3)",
-                  color: "white",
-                  fontWeight: "bold",
-                  padding: "8px 16px",
-                  borderRadius: "999px",
-                  marginBottom: "16px",
-                  width: "fit-content",
-                  backdropFilter: "blur(8px)",
-                }}
-              >
-                {current.category}
-              </span>
-              <h2
-                style={{
-                  fontSize: "clamp(28px, 5vw, 48px)",
-                  fontWeight: "bold",
-                  marginBottom: "12px",
-                  textShadow: "0 4px 12px rgba(0,0,0,0.5)",
-                }}
-              >
-                {current.title}
-              </h2>
-              <p
-                style={{
-                  fontSize: "18px",
-                  lineHeight: "1.6",
-                  marginBottom: "16px",
-                  textShadow: "0 2px 8px rgba(0,0,0,0.4)",
-                }}
-              >
-                {current.text}
-              </p>
-              <span
-                style={{
-                  display: "inline-block",
-                  fontSize: "14px",
-                  fontStyle: "italic",
-                  opacity: 0.9,
-                }}
-              >
-                {current.accroche}
-              </span>
+            <img src={slide.image} alt={slide.title} className="carousel-img" />
+            <div className="carousel-overlay" />
+            <div className="carousel-content">
+              <div className="carousel-badges">
+                <span className="carousel-tag">{slide.category}</span>
+                {slide.subcategory && (
+                  <span className="carousel-subtag">/ {slide.subcategory}</span>
+                )}
+              </div>
+              <h2 className="carousel-title">{slide.title}</h2>
+              <p className="carousel-body">{slide.text}</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          gap: "12px",
-          marginTop: "24px",
-        }}
-      >
-        {articles.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => setCurrentIndex(idx)}
-            style={{
-              width: "12px",
-              height: "12px",
-              borderRadius: "50%",
-              border: "2px solid white",
-              background: idx === currentIndex ? "white" : "rgba(255,255,255,0.4)",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = "scale(1.2)";
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = "scale(1)";
-            }}
-          />
         ))}
+
+        <button className="carousel-arrow carousel-arrow--left" onClick={prev} aria-label="Précédent">
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+            <path d="M8 2L2 9L8 16" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+        <button className="carousel-arrow carousel-arrow--right" onClick={next} aria-label="Suivant">
+          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
+            <path d="M2 2L8 9L2 16" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
+
+        {slides.length > 1 && (
+          <div className="carousel-dots">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                className={`carousel-dot${idx === currentIndex ? " carousel-dot--active" : ""}`}
+                onClick={() => setCurrentIndex(idx)}
+                aria-label={`Slide ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

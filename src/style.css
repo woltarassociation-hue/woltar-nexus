@@ -61,47 +61,73 @@ body {
   transform: translateX(-50%);
   z-index: 20;
   width: min(1120px, 94%);
-  padding: 10px 20px;
+  padding: 12px 18px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  background: rgba(250,250,255,0.92);
-  border: 1px solid rgba(255,255,255,0.45);
+  justify-content: space-between;
+  gap: 18px;
+  background: rgba(250, 250, 255, 0.9);
+  border: 1px solid rgba(255,255,255,0.55);
   border-radius: 24px;
-  box-shadow: 0 14px 36px rgba(0,0,0,0.24);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.22);
   backdrop-filter: blur(10px);
 }
 
 .nav-logo {
-  height: 76px;
-  width: auto;
-  object-fit: contain;
+  height: 95px;
 }
 
-.nav-icons {
+.nav-links {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 18px;
+  gap: 10px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
-.nav-item {
+.nav-link {
   display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  border-radius: 999px;
   text-decoration: none;
-}
-
-.nav-icon {
-  width: 58px;
-  height: auto;
+  color: #7f0000;
+  font-weight: 700;
+  font-size: 13px;
+  background: rgba(255,255,255,0.62);
+  border: 1px solid rgba(160,0,0,0.12);
   transition: 0.2s ease;
 }
 
-.nav-item:hover .nav-icon {
-  transform: translateY(-3px) scale(1.04);
+.nav-link:hover {
+  color: white;
+  background: linear-gradient(135deg, #a40000, #1fa8dc);
+  box-shadow: 0 0 18px rgba(31,168,220,0.32);
+  transform: translateY(-2px);
 }
 
+.nav-symbol {
+  font-size: 15px;
+}
+
+@media (max-width: 950px) {
+  .navbar {
+    position: static;
+    transform: none;
+    width: 92%;
+    margin: 14px auto;
+    flex-direction: column;
+  }
+
+  .nav-links {
+    width: 100%;
+  }
+
+  .nav-link {
+    flex: 1 1 42%;
+    justify-content: center;
+  }
+}
 /* HERO / NEWS */
 .hero {
   min-height: 100vh;
@@ -386,7 +412,7 @@ footer::before {
   position: absolute;
   inset: 0;
   background: url("/logo_woltar.png") center 38px / 220px auto no-repeat;
-  opacity: 0.13;
+  opacity: 0.15;
   pointer-events: none;
 }
 
@@ -407,6 +433,180 @@ footer p {
   margin-top: 70px;
   font-size: 13px;
   letter-spacing: 0.3px;
+}
+
+/* CAROUSEL NEWS — style Endfield */
+.hero-content {
+  padding: 0;
+  overflow: hidden;
+  background: #0d0d12;
+}
+
+.carousel {
+  width: 100%;
+  height: 100%;
+}
+
+.carousel-track {
+  position: relative;
+  width: 100%;
+  min-height: 440px;
+  overflow: hidden;
+  border-radius: 28px;
+}
+
+.carousel-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.9s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.carousel-slide--active {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.carousel-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
+}
+
+.carousel-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    165deg,
+    rgba(0,0,0,0.04) 0%,
+    rgba(0,0,0,0.12) 35%,
+    rgba(0,0,0,0.55) 70%,
+    rgba(0,0,0,0.82) 100%
+  );
+}
+
+.carousel-content {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 28px 100px 32px 36px;
+}
+
+.carousel-badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.carousel-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.18);
+  color: white;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.38);
+  backdrop-filter: blur(8px);
+}
+
+.carousel-subtag {
+  color: rgba(255,255,255,0.62);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.carousel-title {
+  font-size: clamp(22px, 3vw, 38px);
+  font-weight: 800;
+  color: white;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.55);
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+}
+
+.carousel-body {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: rgba(255,255,255,0.78);
+  max-width: 520px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Flèches */
+.carousel-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 20;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.42);
+  background: rgba(10,10,14,0.42);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  transition: all 0.22s ease;
+  padding: 0;
+}
+
+.carousel-arrow--left  { left: 14px; }
+.carousel-arrow--right { right: 14px; }
+
+.carousel-arrow:hover {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.85);
+  transform: translateY(-50%) scale(1.08);
+}
+
+/* Points de navigation */
+.carousel-dots {
+  position: absolute;
+  bottom: 18px;
+  right: 36px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 20;
+}
+
+.carousel-dot {
+  height: 4px;
+  width: 20px;
+  border-radius: 2px;
+  border: none;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.carousel-dot--active {
+  background: white;
+  width: 36px;
+}
+
+.carousel-dot:hover:not(.carousel-dot--active) {
+  background: rgba(255,255,255,0.65);
 }
 
 /* ANIMATIONS */
@@ -479,6 +679,36 @@ footer p {
   .form-box {
     padding: 18px;
     border-radius: 20px;
+    max-width: 100%;
+    overflow: hidden;
+  }
+
+  .form-box input,
+  .form-box textarea,
+  .form-box select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
+  .stats-form-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .carousel-track {
+    min-height: 360px;
+  }
+
+  .carousel-slide {
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .carousel-img-wrap {
+    flex: 0 0 auto;
+    width: 100%;
+    height: 150px;
   }
 
   .work-in-progress {
