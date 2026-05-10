@@ -49,9 +49,11 @@ export default function ArticlePage() {
   }
 
   const meta = CATEGORY_META[category] || { label: category, icon: "✦", path: "/" };
-  const fontStack = getFontStack(article.font);
+  const titleStack = getFontStack(article.titleFont || article.font);
+  const bodyStack  = getFontStack(article.bodyFont  || article.font);
   const readTime = estimateReadTime(article.content);
   const hasHtml = /<[a-z][\s\S]*>/i.test(article.content || "");
+  const isFull = article.coverMode === "full";
 
   return (
     <div
@@ -61,22 +63,20 @@ export default function ArticlePage() {
       <div className="red-pattern" />
       <SiteNav />
 
-      {/* Hero cinématique */}
-      <div className="art-hero">
-        <div className="art-hero-cover">
-          {article.coverUrl ? (
-            <img
-              src={article.coverUrl}
-              alt={article.title}
-              className="art-hero-img"
-            />
-          ) : (
-            <div className="art-hero-cover-empty">
-              <div className="art-hero-cover-pattern" />
-            </div>
-          )}
-          <div className="art-hero-overlay" />
-        </div>
+      {/* Hero — bannière recadrée OU header compact selon coverMode */}
+      <div className={`art-hero${isFull ? " art-hero--compact" : ""}`}>
+        {!isFull && (
+          <div className="art-hero-cover">
+            {article.coverUrl ? (
+              <img src={article.coverUrl} alt={article.title} className="art-hero-img" />
+            ) : (
+              <div className="art-hero-cover-empty">
+                <div className="art-hero-cover-pattern" />
+              </div>
+            )}
+            <div className="art-hero-overlay" />
+          </div>
+        )}
 
         <div className="art-hero-content">
           <nav className="art-breadcrumb">
@@ -87,10 +87,7 @@ export default function ArticlePage() {
             </Link>
           </nav>
 
-          <h1
-            className="art-hero-title"
-            style={{ fontFamily: fontStack }}
-          >
+          <h1 className="art-hero-title" style={{ fontFamily: titleStack }}>
             {article.title}
           </h1>
 
@@ -115,6 +112,13 @@ export default function ArticlePage() {
         </div>
       </div>
 
+      {/* Image complète (mode A4) — affichée en pleine largeur sous le header */}
+      {isFull && article.coverUrl && (
+        <div className="art-cover-full">
+          <img src={article.coverUrl} alt={article.title} className="art-cover-full-img" />
+        </div>
+      )}
+
       {/* Corps de l'article */}
       <div className="art-body">
         <div className="art-container">
@@ -123,7 +127,7 @@ export default function ArticlePage() {
               className="art-intro"
               style={{ borderColor: article.accentColor || "#1fa8dc" }}
             >
-              <p style={{ fontFamily: fontStack, color: article.textColor }}>
+              <p style={{ fontFamily: bodyStack, color: article.textColor }}>
                 {article.summary}
               </p>
             </div>
@@ -131,7 +135,7 @@ export default function ArticlePage() {
 
           <div
             className="art-text"
-            style={{ fontFamily: fontStack, color: article.textColor || "#1a1020" }}
+            style={{ fontFamily: bodyStack, color: article.textColor || "#1a1020" }}
           >
             {hasHtml ? (
               <div

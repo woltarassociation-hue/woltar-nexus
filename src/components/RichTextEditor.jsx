@@ -41,6 +41,206 @@ export const RTE_FONT_GROUPS = [
 
 const TEXT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
 
+/* ── Tailles et alignements d'image ─────────────────────────── */
+const IMG_SIZES = [
+  { id: "25",   label: "¼" },
+  { id: "40",   label: "40%" },
+  { id: "50",   label: "½" },
+  { id: "75",   label: "¾" },
+  { id: "100",  label: "Pleine" },
+];
+
+const IMG_ALIGNS = [
+  { id: "left",   label: "⇤ Gauche",  style: { float: "left",  marginRight: "18px", marginBottom: "10px", marginLeft: "0" } },
+  { id: "center", label: "≡ Centre",  style: { display: "block", margin: "14px auto" } },
+  { id: "right",  label: "⇥ Droite", style: { float: "right", marginLeft: "18px",  marginBottom: "10px", marginRight: "0" } },
+];
+
+/* ── Construit la balise img ─────────────────────────────────── */
+function buildImgTag(src, align, size, caption) {
+  const alignCfg = IMG_ALIGNS.find((a) => a.id === align) || IMG_ALIGNS[1];
+  const widthPct = size;
+
+  const styleObj = { ...alignCfg.style, width: `${widthPct}%`, maxWidth: "100%", borderRadius: "8px" };
+  const styleStr = Object.entries(styleObj)
+    .map(([k, v]) => `${k.replace(/([A-Z])/g, "-$1").toLowerCase()}:${v}`)
+    .join(";");
+
+  const imgTag = `<img src="${src}" alt="${caption || ""}" style="${styleStr}" />`;
+
+  if (caption) {
+    const captionStyle = align === "center"
+      ? "display:block;text-align:center;font-size:13px;color:#888;margin-top:4px;font-style:italic;"
+      : align === "left"
+      ? "display:block;float:left;clear:left;font-size:13px;color:#888;margin:2px 18px 10px 0;font-style:italic;"
+      : "display:block;float:right;clear:right;font-size:13px;color:#888;margin:2px 0 10px 18px;font-style:italic;";
+    return `${imgTag}<span style="${captionStyle}">${caption}</span>`;
+  }
+
+  return imgTag;
+}
+
+/* ── Panneau d'insertion d'image ─────────────────────────────── */
+function ImagePanel({ onInsert, onClose }) {
+  const [tab, setTab] = useState("upload"); // "upload" | "url"
+  const [url, setUrl] = useState("");
+  const [align, setAlign] = useState("center");
+  const [size, setSize] = useState("100");
+  const [caption, setCaption] = useState("");
+  const [preview, setPreview] = useState(null);
+  const fileRef = useRef(null);
+
+  const handleFile = (file) => {
+    if (!file || !file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setPreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUrl = (val) => {
+    setUrl(val);
+    setPreview(val || null);
+  };
+
+  const ready = preview || url;
+
+  const handleInsert = () => {
+    const src = tab === "url" ? url : preview;
+    if (!src) return;
+    onInsert(buildImgTag(src, align, size, caption));
+  };
+
+  return (
+    <div className="rte-img-panel" onClick={(e) => e.stopPropagation()}>
+      <div className="rte-img-panel-header">
+        <span className="rte-img-panel-title">Insérer une image</span>
+        <button className="rte-img-panel-close" onClick={onClose} type="button">×</button>
+      </div>
+
+      {/* Tabs */}
+      <div className="rte-img-tabs">
+        <button
+          type="button"
+          className={`rte-img-tab${tab === "upload" ? " rte-img-tab--active" : ""}`}
+          onClick={() => setTab("upload")}
+        >
+          📁 Depuis l'appareil
+        </button>
+        <button
+          type="button"
+          className={`rte-img-tab${tab === "url" ? " rte-img-tab--active" : ""}`}
+          onClick={() => setTab("url")}
+        >
+          🔗 Depuis une URL
+        </button>
+      </div>
+
+      {tab === "upload" && (
+        <div
+          className="rte-img-dropzone"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => { e.preventDefault(); handleFile(e.dataTransfer.files[0]); }}
+        >
+          {preview && tab === "upload" ? (
+            <img src={preview} alt="aperçu" className="rte-img-preview" />
+          ) : (
+            <div className="rte-img-dropzone-inner">
+              <span className="rte-img-dropzone-icon">🖼</span>
+              <span>Cliquez ou glissez une image ici</span>
+              <span className="rte-img-dropzone-hint">PNG · JPG · WEBP · GIF</span>
+            </div>
+          )}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            style={{ display: "none" }}
+            onChange={(e) => handleFile(e.target.files[0])}
+          />
+        </div>
+      )}
+
+      {tab === "url" && (
+        <div className="rte-img-url-wrap">
+          <input
+            className="rte-img-url-input"
+            type="url"
+            placeholder="https://exemple.com/image.jpg"
+            value={url}
+            onChange={(e) => handleUrl(e.target.value)}
+            autoFocus
+          />
+          {preview && (
+            <img src={preview} alt="aperçu" className="rte-img-preview rte-img-preview--url"
+              onError={() => setPreview(null)} />
+          )}
+        </div>
+      )}
+
+      <div className="rte-img-options">
+        {/* Alignement */}
+        <div className="rte-img-opt-group">
+          <span className="rte-img-opt-label">Alignement</span>
+          <div className="rte-img-opt-btns">
+            {IMG_ALIGNS.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                className={`rte-img-opt-btn${align === a.id ? " rte-img-opt-btn--active" : ""}`}
+                onClick={() => setAlign(a.id)}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Taille */}
+        <div className="rte-img-opt-group">
+          <span className="rte-img-opt-label">Taille</span>
+          <div className="rte-img-opt-btns">
+            {IMG_SIZES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`rte-img-opt-btn${size === s.id ? " rte-img-opt-btn--active" : ""}`}
+                onClick={() => setSize(s.id)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Légende */}
+        <div className="rte-img-opt-group">
+          <span className="rte-img-opt-label">Légende <span style={{ fontWeight: 400, color: "#bbb" }}>(optionnel)</span></span>
+          <input
+            className="rte-img-caption-input"
+            type="text"
+            placeholder="Ajouter une légende…"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="rte-img-panel-footer">
+        <button type="button" className="rte-img-cancel-btn" onClick={onClose}>Annuler</button>
+        <button
+          type="button"
+          className="rte-img-insert-btn"
+          onClick={handleInsert}
+          disabled={!ready}
+        >
+          Insérer l'image →
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Composant principal ────────────────────────────────────── */
 
 export default function RichTextEditor({
@@ -48,10 +248,11 @@ export default function RichTextEditor({
   onChange,
   placeholder = "Rédigez votre article ici…",
 }) {
-  const editorRef    = useRef(null);
+  const editorRef     = useRef(null);
   const savedRangeRef = useRef(null);
-  const [showFonts, setShowFonts] = useState(false);
-  const [showSizes, setShowSizes] = useState(false);
+  const [showFonts, setShowFonts]   = useState(false);
+  const [showSizes, setShowSizes]   = useState(false);
+  const [showImgPanel, setShowImgPanel] = useState(false);
 
   /* Initialisation */
   useEffect(() => {
@@ -60,7 +261,6 @@ export default function RichTextEditor({
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Sauvegarde la sélection avant qu'un bouton de toolbar prenne le focus */
   const saveSelection = () => {
     const sel = window.getSelection();
     if (sel && sel.rangeCount > 0) {
@@ -68,7 +268,6 @@ export default function RichTextEditor({
     }
   };
 
-  /* Restaure la sélection dans l'éditeur */
   const restoreSelection = () => {
     if (!savedRangeRef.current || !editorRef.current) return;
     editorRef.current.focus();
@@ -81,14 +280,12 @@ export default function RichTextEditor({
     onChange(editorRef.current?.innerHTML || "");
   }, [onChange]);
 
-  /* Commande execCommand standard */
   const exec = useCallback((cmd, val = null) => {
     restoreSelection();
     document.execCommand(cmd, false, val);
     emit();
   }, [emit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Application d'une police via span inline */
   const applyFont = useCallback((stack) => {
     restoreSelection();
     const sel = window.getSelection();
@@ -111,7 +308,6 @@ export default function RichTextEditor({
     setShowFonts(false);
   }, [emit]);
 
-  /* Application d'une taille */
   const applySize = useCallback((px) => {
     restoreSelection();
     const sel = window.getSelection();
@@ -132,14 +328,12 @@ export default function RichTextEditor({
     setShowSizes(false);
   }, [emit]);
 
-  /* Insertion HTML directe */
   const insertHTML = useCallback((html) => {
     restoreSelection();
     document.execCommand("insertHTML", false, html);
     emit();
-  }, [emit]);
+  }, [emit]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Insertion d'un lien */
   const insertLink = useCallback(() => {
     restoreSelection();
     const url = window.prompt("URL du lien :", "https://");
@@ -147,32 +341,39 @@ export default function RichTextEditor({
     emit();
   }, [emit]);
 
-  /* Insertion d'une image dans le contenu */
-  const insertImageInput = useRef(null);
-  const handleImageInsert = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      restoreSelection();
-      document.execCommand("insertHTML", false, `<img src="${reader.result}" alt="" style="max-width:100%;border-radius:8px;margin:10px 0;" />`);
-      emit();
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
+  const handleImageInsert = (html) => {
+    insertHTML(html);
+    setShowImgPanel(false);
+  };
+
+  const closeAll = () => {
+    setShowFonts(false);
+    setShowSizes(false);
+    setShowImgPanel(false);
   };
 
   return (
-    <div className="rte-wrap" onClick={() => { setShowFonts(false); setShowSizes(false); }}>
+    <div className="rte-wrap" onClick={closeAll}>
+
+      {/* Panneau image — overlay */}
+      {showImgPanel && (
+        <div className="rte-img-overlay" onClick={() => setShowImgPanel(false)}>
+          <ImagePanel
+            onInsert={handleImageInsert}
+            onClose={() => setShowImgPanel(false)}
+          />
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="rte-toolbar" onClick={(e) => e.stopPropagation()}>
 
         {/* Formatage */}
         <div className="rte-group">
-          <ToolBtn title="Gras" onClick={() => exec("bold")}><b>B</b></ToolBtn>
+          <ToolBtn title="Gras"    onClick={() => exec("bold")}><b>B</b></ToolBtn>
           <ToolBtn title="Italique" onClick={() => exec("italic")}><i>I</i></ToolBtn>
           <ToolBtn title="Souligné" onClick={() => exec("underline")}><u>U</u></ToolBtn>
-          <ToolBtn title="Barré" onClick={() => exec("strikeThrough")}><s>S</s></ToolBtn>
+          <ToolBtn title="Barré"   onClick={() => exec("strikeThrough")}><s>S</s></ToolBtn>
         </div>
 
         <div className="rte-sep" />
@@ -231,7 +432,7 @@ export default function RichTextEditor({
           <ToolBtn
             title="Police"
             onMouseDown={saveSelection}
-            onClick={() => { setShowFonts((v) => !v); setShowSizes(false); }}
+            onClick={() => { setShowFonts((v) => !v); setShowSizes(false); setShowImgPanel(false); }}
             active={showFonts}
           >
             Aa ▾
@@ -263,7 +464,7 @@ export default function RichTextEditor({
           <ToolBtn
             title="Taille"
             onMouseDown={saveSelection}
-            onClick={() => { setShowSizes((v) => !v); setShowFonts(false); }}
+            onClick={() => { setShowSizes((v) => !v); setShowFonts(false); setShowImgPanel(false); }}
             active={showSizes}
           >
             Taille ▾
@@ -285,17 +486,17 @@ export default function RichTextEditor({
           )}
         </div>
 
+        <div className="rte-sep" />
+
         {/* Image dans le contenu */}
-        <label className="rte-btn" title="Insérer une image" onMouseDown={saveSelection}>
-          🖼
-          <input
-            ref={insertImageInput}
-            type="file"
-            accept="image/*"
-            style={{ display: "none" }}
-            onChange={handleImageInsert}
-          />
-        </label>
+        <ToolBtn
+          title="Insérer une image"
+          onMouseDown={saveSelection}
+          onClick={() => { setShowImgPanel((v) => !v); setShowFonts(false); setShowSizes(false); }}
+          active={showImgPanel}
+        >
+          🖼 Image
+        </ToolBtn>
       </div>
 
       {/* Zone d'édition */}

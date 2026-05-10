@@ -118,8 +118,11 @@ const EMPTY_FORM = {
   coverFile: null,
   coverPreview: null,
   coverUrl: null,
+  coverMode: "banner",
   status: "draft",
   font: "Playfair Display",
+  titleFont: "Playfair Display",
+  bodyFont: "Merriweather",
   titleColor: "#8b0000",
   textColor: "#1a1020",
   accentColor: "#1fa8dc",
@@ -211,8 +214,11 @@ export default function AssociationDashboard() {
         summary: form.summary,
         content: form.content,
         coverUrl,
+        coverMode: form.coverMode || "banner",
         status,
         font: form.font,
+        titleFont: form.titleFont,
+        bodyFont: form.bodyFont,
         titleColor: form.titleColor,
         textColor: form.textColor,
         accentColor: form.accentColor,
@@ -489,6 +495,28 @@ export default function AssociationDashboard() {
                   style={{ display: "none" }}
                   onChange={(e) => applyImage(e.target.files[0])}
                 />
+
+                {form.coverPreview && (
+                  <div className="db-covermode-wrap">
+                    <label className="db-label">Affichage de l'image</label>
+                    <div className="db-covermode-btns">
+                      <button
+                        type="button"
+                        className={`db-covermode-btn${(form.coverMode || "banner") === "banner" ? " db-covermode-btn--active" : ""}`}
+                        onClick={() => set("coverMode", "banner")}
+                      >
+                        🎬 Bannière recadrée
+                      </button>
+                      <button
+                        type="button"
+                        className={`db-covermode-btn${form.coverMode === "full" ? " db-covermode-btn--active" : ""}`}
+                        onClick={() => set("coverMode", "full")}
+                      >
+                        📄 Image complète (A4)
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -521,8 +549,11 @@ export default function AssociationDashboard() {
                   <ColorPicker label="Fond" value={form.bgColor} onChange={(v) => set("bgColor", v)} />
                 </div>
 
-                <p className="db-style-section-label">Police d'écriture</p>
-                <FontPicker value={form.font} onChange={(v) => set("font", v)} />
+                <p className="db-style-section-label">Police du titre</p>
+                <FontSelect value={form.titleFont} onChange={(v) => set("titleFont", v)} />
+
+                <p className="db-style-section-label">Police du texte</p>
+                <FontSelect value={form.bodyFont} onChange={(v) => set("bodyFont", v)} />
               </div>
             )}
 
@@ -561,27 +592,61 @@ export default function AssociationDashboard() {
 
 /* ── Sub-components ──────────────────────────────────────── */
 
-function FontPicker({ value, onChange }) {
+function FontSelect({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  const allFonts = FONT_GROUPS.flatMap((g) => g.fonts);
+  const selected = allFonts.find((f) => f.id === value);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   return (
-    <div className="fp-wrap">
-      {FONT_GROUPS.map((group) => (
-        <div key={group.label} className="fp-group">
-          <p className="fp-group-label">{group.label}</p>
-          <div className="fp-list">
-            {group.fonts.map((font) => (
-              <button
-                key={font.id}
-                className={`fp-btn${value === font.id ? " fp-btn--active" : ""}`}
-                style={{ fontFamily: font.stack }}
-                onClick={() => onChange(font.id)}
-              >
-                {font.id}
-                <span className="fp-btn-sample" style={{ fontFamily: font.stack }}>Aa</span>
-              </button>
-            ))}
-          </div>
+    <div className="fsel-wrap" ref={wrapRef}>
+      <button
+        type="button"
+        className={`fsel-trigger${open ? " fsel-trigger--open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="fsel-current" style={{ fontFamily: selected?.stack }}>
+          {value || "Choisir une police…"}
+        </span>
+        <span className="fsel-sample" style={{ fontFamily: selected?.stack }}>
+          Aa
+        </span>
+        <span className="fsel-arrow">{open ? "▴" : "▾"}</span>
+      </button>
+
+      {open && (
+        <div className="fsel-dropdown">
+          {FONT_GROUPS.map((group) => (
+            <div key={group.label} className="fsel-group">
+              <p className="fsel-group-label">{group.label}</p>
+              {group.fonts.map((font) => (
+                <button
+                  key={font.id}
+                  type="button"
+                  className={`fsel-item${value === font.id ? " fsel-item--active" : ""}`}
+                  onClick={() => { onChange(font.id); setOpen(false); }}
+                >
+                  <span className="fsel-item-name" style={{ fontFamily: font.stack }}>
+                    {font.id}
+                  </span>
+                  <span className="fsel-item-sample" style={{ fontFamily: font.stack }}>
+                    Le renard rapide
+                  </span>
+                </button>
+              ))}
+            </div>
+          ))}
         </div>
-      ))}
+      )}
     </div>
   );
 }
@@ -988,6 +1053,7 @@ function AfficheSection() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(null);
 
   const setF = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
@@ -996,6 +1062,7 @@ function AfficheSection() {
     setF("imageFile", file);
     setF("preview", URL.createObjectURL(file));
     setSaved(false);
+    setSaveError(null);
   };
 
   const handleDrop = (e) => {
@@ -1003,24 +1070,41 @@ function AfficheSection() {
     handleFile(e.dataTransfer.files[0]);
   };
 
+  const readFileAsDataURL = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Impossible de lire le fichier image."));
+      reader.readAsDataURL(file);
+    });
+
   const handleSave = async () => {
     setSaving(true);
-    let imageUrl = form.imageUrl;
-    if (form.imageFile) {
-      imageUrl = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result);
-        reader.readAsDataURL(form.imageFile);
-      });
+    setSaveError(null);
+    setSaved(false);
+    try {
+      let imageUrl = form.imageUrl;
+      if (form.imageFile) {
+        imageUrl = await readFileAsDataURL(form.imageFile);
+      }
+      const record = {
+        title: form.title,
+        link: form.link,
+        imageUrl,
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(AFFICHE_KEY, JSON.stringify(record));
+      window.dispatchEvent(new Event("woltar:affiche"));
+      setAffiche(record);
+      setF("imageUrl", imageUrl);
+      setF("imageFile", null);
+      setSaved(true);
+    } catch (err) {
+      console.error("[AfficheSection] handleSave:", err);
+      setSaveError(err.message || "Une erreur est survenue lors de l'enregistrement.");
+    } finally {
+      setSaving(false);
     }
-    const record = { title: form.title, link: form.link, imageUrl, updatedAt: new Date().toISOString() };
-    localStorage.setItem(AFFICHE_KEY, JSON.stringify(record));
-    window.dispatchEvent(new Event("woltar:affiche"));
-    setAffiche(record);
-    setF("imageUrl", imageUrl);
-    setF("imageFile", null);
-    setSaving(false);
-    setSaved(true);
   };
 
   const handleClear = () => {
@@ -1088,6 +1172,10 @@ function AfficheSection() {
             style={{ display: "none" }}
             onChange={(e) => handleFile(e.target.files[0])}
           />
+
+          {saveError && (
+            <p className="affiche-save-error">✕ {saveError}</p>
+          )}
 
           <div className="affiche-actions">
             <button
@@ -1341,13 +1429,16 @@ function RPDashboard() {
 }
 
 function ArticlePreview({ form, category }) {
-  const fontStack = getFontStack(form.font);
+  const titleStack = getFontStack(form.titleFont || form.font);
+  const bodyStack  = getFontStack(form.bodyFont  || form.font);
+  const isFull = form.coverMode === "full";
+
   return (
-    <div className="ap-card" style={{ background: form.bgColor, fontFamily: fontStack }}>
+    <div className="ap-card" style={{ background: form.bgColor }}>
       {form.coverPreview ? (
-        <div className="ap-cover">
-          <img src={form.coverPreview} alt="Couverture" />
-          <div className="ap-cover-overlay" />
+        <div className={`ap-cover${isFull ? " ap-cover--full" : ""}`}>
+          <img src={form.coverPreview} alt="Couverture" style={{ objectFit: isFull ? "contain" : "cover" }} />
+          {!isFull && <div className="ap-cover-overlay" />}
         </div>
       ) : (
         <div className="ap-cover ap-cover--empty">
@@ -1362,17 +1453,17 @@ function ArticlePreview({ form, category }) {
           </span>
         )}
 
-        <h3 className="ap-title" style={{ color: form.titleColor, fontFamily: fontStack }}>
+        <h3 className="ap-title" style={{ color: form.titleColor, fontFamily: titleStack }}>
           {form.title || <span className="ap-placeholder">Titre de l'article</span>}
         </h3>
 
         {form.summary && (
-          <p className="ap-summary" style={{ color: form.textColor }}>{form.summary}</p>
+          <p className="ap-summary" style={{ color: form.textColor, fontFamily: bodyStack }}>{form.summary}</p>
         )}
 
         <div className="ap-content" style={{ borderColor: `${form.accentColor}33` }}>
           {form.content ? (
-            <p style={{ color: form.textColor }}>
+            <p style={{ color: form.textColor, fontFamily: bodyStack }}>
               {(() => { const t = stripHtml(form.content); return t.length > 220 ? t.slice(0, 220) + "…" : t; })()}
             </p>
           ) : (

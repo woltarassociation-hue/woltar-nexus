@@ -32,17 +32,28 @@ export async function removeArticle(id) {
 
 export async function uploadCoverImage(file) {
   if (!supabase) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Impossible de lire l'image de couverture."));
       reader.readAsDataURL(file);
     });
   }
-  const fileName = `covers/${Date.now()}-${file.name}`;
-  const { error } = await supabase.storage
-    .from("article-images")
-    .upload(fileName, file);
-  if (error) throw new Error(error.message);
-  const { data } = supabase.storage.from("article-images").getPublicUrl(fileName);
-  return data.publicUrl;
+  try {
+    const fileName = `covers/${Date.now()}-${file.name}`;
+    const { error } = await supabase.storage
+      .from("article-images")
+      .upload(fileName, file);
+    if (error) throw new Error(error.message);
+    const { data } = supabase.storage.from("article-images").getPublicUrl(fileName);
+    return data.publicUrl;
+  } catch (err) {
+    console.error("[uploadCoverImage] Supabase failed, falling back to base64:", err);
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = () => reject(new Error("Impossible de lire l'image de couverture."));
+      reader.readAsDataURL(file);
+    });
+  }
 }
