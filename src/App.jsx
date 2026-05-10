@@ -4,9 +4,10 @@ import AssociationDashboard from "./components/AssociationDashboard.jsx";
 import SiteNav from "./components/SiteNav.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
+import SetupPage from "./pages/SetupPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { saveCandidature } from "./lib/candidatures.js";
-import { authenticate, setSession } from "./lib/profiles.js";
+import { authenticate, setSession, isConfigured } from "./lib/profiles.js";
 import "./style.css";
 
 const stats = [
@@ -107,6 +108,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MainSite />} />
+      <Route path="/setup" element={<SetupPage />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
       <Route path="/:category/:slug" element={<ArticlePage />} />
       <Route path="/:category" element={<CategoryPage />} />
@@ -368,51 +370,71 @@ function MainSite() {
         <div className="association-access">
           <div className="association-access-panel">
             <div className="association-access-icon">◇</div>
-            <div className="association-access-title">Accès membres</div>
 
-            <form
-              className="association-login-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const profile = authenticate(assocUser, assocPass);
-                if (profile) {
-                  setSession(profile);
-                  navigate("/association/dashboard");
-                } else {
-                  setAssocError(true);
-                  setAssocPass("");
-                }
-              }}
-            >
-              <div className="assoc-field">
-                <label className="assoc-label">Identifiant</label>
-                <input
-                  className="assoc-input"
-                  type="text"
-                  autoComplete="username"
-                  value={assocUser}
-                  onChange={(e) => { setAssocUser(e.target.value); setAssocError(false); }}
-                  placeholder="Votre identifiant"
-                />
-              </div>
-              <div className="assoc-field">
-                <label className="assoc-label">Mot de passe</label>
-                <input
-                  className="assoc-input"
-                  type="password"
-                  autoComplete="current-password"
-                  value={assocPass}
-                  onChange={(e) => { setAssocPass(e.target.value); setAssocError(false); }}
-                  placeholder="••••••••"
-                />
-              </div>
-              {assocError && (
-                <p className="assoc-error">Identifiants incorrects.</p>
-              )}
-              <button type="submit" className="association-login-btn">
-                Ouvrir le tableau de bord →
-              </button>
-            </form>
+            {!isConfigured() ? (
+              /* Premier lancement — pas encore configuré */
+              <>
+                <div className="association-access-title">Premier lancement</div>
+                <p className="association-access-text">
+                  L'espace association n'a pas encore été configuré.<br />
+                  Créez le compte administrateur pour commencer.
+                </p>
+                <button
+                  className="association-login-btn"
+                  onClick={() => navigate("/setup")}
+                >
+                  Configurer l'espace →
+                </button>
+              </>
+            ) : (
+              /* Connexion normale */
+              <>
+                <div className="association-access-title">Accès membres</div>
+                <form
+                  className="association-login-form"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const profile = authenticate(assocUser, assocPass);
+                    if (profile) {
+                      setSession(profile);
+                      navigate("/association/dashboard");
+                    } else {
+                      setAssocError(true);
+                      setAssocPass("");
+                    }
+                  }}
+                >
+                  <div className="assoc-field">
+                    <label className="assoc-label">Identifiant</label>
+                    <input
+                      className="assoc-input"
+                      type="text"
+                      autoComplete="username"
+                      value={assocUser}
+                      onChange={(e) => { setAssocUser(e.target.value); setAssocError(false); }}
+                      placeholder="Votre identifiant"
+                    />
+                  </div>
+                  <div className="assoc-field">
+                    <label className="assoc-label">Mot de passe</label>
+                    <input
+                      className="assoc-input"
+                      type="password"
+                      autoComplete="current-password"
+                      value={assocPass}
+                      onChange={(e) => { setAssocPass(e.target.value); setAssocError(false); }}
+                      placeholder="••••••••"
+                    />
+                  </div>
+                  {assocError && (
+                    <p className="assoc-error">Identifiants incorrects.</p>
+                  )}
+                  <button type="submit" className="association-login-btn">
+                    Ouvrir le tableau de bord →
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         </div>
       </Section>

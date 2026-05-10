@@ -1,52 +1,35 @@
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";
 
-const ROLE_LABELS = {
+export const ROLE_LABELS = {
   admin: "Administrateur",
   artiste: "Artistes",
   communication: "Communication",
   custom: "Personnalisé",
 };
 
-const DEFAULT_PROFILES = [
-  {
-    id: "default-admin",
-    name: "Administrateur",
-    role: "admin",
-    username: "association",
-    password: "woltar2026",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "default-artiste",
-    name: "Artistes",
-    role: "artiste",
-    username: "artiste",
-    password: "woltar2026",
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "default-comm",
-    name: "Communication",
-    role: "communication",
-    username: "communication",
-    password: "woltar2026",
-    createdAt: new Date().toISOString(),
-  },
-];
+/* Retourne true si au moins un compte a été créé via le formulaire d'inscription.
+   Les profils auto-générés ("default-*") ne comptent pas. */
+export function isConfigured() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (!stored || stored.length === 0) return false;
+    return stored.some((p) => !String(p.id).startsWith("default-"));
+  } catch {
+    return false;
+  }
+}
 
-export { ROLE_LABELS };
-
+/* Retourne la liste des profils réels (hors profils auto).
+   Si seuls des profils "default-*" existent, renvoie [] — l'espace n'est pas encore configuré. */
 export function getProfiles() {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || "null");
-    if (!stored || stored.length === 0) {
-      localStorage.setItem(KEY, JSON.stringify(DEFAULT_PROFILES));
-      return DEFAULT_PROFILES;
-    }
-    return stored;
+    if (!stored || stored.length === 0) return [];
+    const real = stored.filter((p) => !String(p.id).startsWith("default-"));
+    return real;
   } catch {
-    return DEFAULT_PROFILES;
+    return [];
   }
 }
 
@@ -70,14 +53,18 @@ export function deleteProfile(id) {
 }
 
 export function authenticate(username, password) {
-  const profiles = getProfiles();
-  return profiles.find(
-    (p) => p.username.trim().toLowerCase() === username.trim().toLowerCase() && p.password === password
+  return getProfiles().find(
+    (p) =>
+      p.username.trim().toLowerCase() === username.trim().toLowerCase() &&
+      p.password === password
   ) || null;
 }
 
 export function setSession(profile) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify({ id: profile.id, name: profile.name, role: profile.role }));
+  sessionStorage.setItem(
+    SESSION_KEY,
+    JSON.stringify({ id: profile.id, name: profile.name, role: profile.role })
+  );
 }
 
 export function getSession() {
