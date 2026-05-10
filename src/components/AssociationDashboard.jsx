@@ -4,6 +4,7 @@ import { saveArticle, uploadCoverImage } from "../lib/supabase";
 import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
+import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -262,7 +263,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès" }[section]}
+            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -296,6 +297,12 @@ export default function AssociationDashboard() {
           >
             👥 Profils
           </button>
+          <button
+            className={`db-nav-btn${section === "membres" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("membres")}
+          >
+            🧑‍🤝‍🧑 Membres
+          </button>
         </div>
         <button
           className="db-logout-btn"
@@ -310,6 +317,7 @@ export default function AssociationDashboard() {
       {section === "candidatures" && <RPDashboard />}
       {section === "affiche" && <AfficheSection />}
       {section === "profils" && <ProfilesSection />}
+      {section === "membres" && <MembresSection />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -1386,6 +1394,110 @@ function ArticlePreview({ form, category }) {
           </span>
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Membres ─────────────────────────────────────────────── */
+
+function MembresSection() {
+  const [members, setMembers] = useState(() => getAllMembers());
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    const refresh = () => setMembers(getAllMembers());
+    window.addEventListener("woltar:members", refresh);
+    return () => window.removeEventListener("woltar:members", refresh);
+  }, []);
+
+  const filtered = members.filter(
+    (m) =>
+      m.pseudo.toLowerCase().includes(search.toLowerCase()) ||
+      (m.woltarien1 || "").toLowerCase().includes(search.toLowerCase()) ||
+      (m.woltarien2 || "").toLowerCase().includes(search.toLowerCase())
+  );
+
+  const handleRoleChange = (member, role) => {
+    upsertMember({ ...member, role });
+  };
+
+  const handleDelete = (member) => {
+    if (!window.confirm(`Supprimer le compte de ${member.pseudo} ?`)) return;
+    deleteMember(member.id);
+  };
+
+  return (
+    <div className="mbr-section">
+      <div className="mbr-header">
+        <div>
+          <h2 className="mbr-heading">Membres inscrits</h2>
+          <p className="mbr-desc">
+            {members.length} compte{members.length !== 1 ? "s" : ""} enregistré{members.length !== 1 ? "s" : ""}.
+            Gérez les rôles et accès des membres de la communauté.
+          </p>
+        </div>
+        <input
+          className="mbr-search"
+          type="text"
+          placeholder="Rechercher un membre…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="mbr-empty">
+          {members.length === 0
+            ? "Aucun membre inscrit pour l'instant."
+            : "Aucun résultat pour cette recherche."}
+        </div>
+      ) : (
+        <div className="mbr-list">
+          {filtered.map((m) => (
+            <div className="mbr-card" key={m.id}>
+              <div className="mbr-card-left">
+                <div className="mbr-avatar">
+                  {m.avatar ? (
+                    <img src={m.avatar} alt={m.pseudo} className="mbr-avatar-img" />
+                  ) : (
+                    <span className="mbr-avatar-icon">👤</span>
+                  )}
+                </div>
+                <div className="mbr-info">
+                  <div className="mbr-pseudo">{m.pseudo}</div>
+                  <div className="mbr-woltariens">
+                    {m.woltarien1}
+                    {m.woltarien2 && <span> · {m.woltarien2}</span>}
+                  </div>
+                  <div className="mbr-date">
+                    Inscrit le {new Date(m.createdAt).toLocaleDateString("fr-FR", {
+                      day: "numeric", month: "long", year: "numeric",
+                    })}
+                  </div>
+                </div>
+              </div>
+              <div className="mbr-card-right">
+                <select
+                  className="mbr-role-select"
+                  value={m.role || "membre"}
+                  onChange={(e) => handleRoleChange(m, e.target.value)}
+                >
+                  {Object.entries(MEMBER_ROLE_LABELS).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
+                <button
+                  className="mbr-delete-btn"
+                  onClick={() => handleDelete(m)}
+                  title="Supprimer ce compte"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -20,14 +20,11 @@ export function isConfigured() {
   }
 }
 
-/* Retourne la liste des profils réels (hors profils auto).
-   Si seuls des profils "default-*" existent, renvoie [] — l'espace n'est pas encore configuré. */
 export function getProfiles() {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || "null");
     if (!stored || stored.length === 0) return [];
-    const real = stored.filter((p) => !String(p.id).startsWith("default-"));
-    return real;
+    return stored;
   } catch {
     return [];
   }

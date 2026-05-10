@@ -5,6 +5,8 @@ import SiteNav from "./components/SiteNav.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
+import RegisterPage from "./pages/RegisterPage.jsx";
+import AccountPage from "./pages/AccountPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { saveCandidature } from "./lib/candidatures.js";
 import { authenticate, setSession } from "./lib/profiles.js";
@@ -109,6 +111,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<MainSite />} />
       <Route path="/setup" element={<SetupPage />} />
+      <Route path="/inscription" element={<RegisterPage />} />
+      <Route path="/compte" element={<AccountPage />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
       <Route path="/:category/:slug" element={<ArticlePage />} />
       <Route path="/:category" element={<CategoryPage />} />
@@ -419,6 +423,9 @@ function MainSite() {
                 Ouvrir le tableau de bord →
               </button>
             </form>
+            <Link to="/inscription" className="assoc-register-link">
+              S'enregistrer
+            </Link>
           </div>
         </div>
       </Section>

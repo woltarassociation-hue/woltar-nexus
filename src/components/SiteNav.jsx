@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { getMemberSession } from "../lib/members";
 
 const LEFT_LINKS = [
   { label: "Accueil",    icon: "🏠",  to: "/",           isHash: false },
@@ -34,8 +35,19 @@ function NavLink({ link, active, onClick }) {
 
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
+  const [memberSession, setMemberSession] = useState(() => getMemberSession());
   const { pathname } = useLocation();
   const close = () => setOpen(false);
+
+  useEffect(() => {
+    const refresh = () => setMemberSession(getMemberSession());
+    window.addEventListener("woltar:members", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("woltar:members", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
 
   return (
     <header className="navbar">
@@ -71,6 +83,16 @@ export default function SiteNav() {
           <span className="nav-symbol">◇</span>
           <span>Association</span>
         </a>
+        {memberSession && (
+          <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
+            {memberSession.avatar ? (
+              <img src={memberSession.avatar} alt="" className="nav-member-avatar" />
+            ) : (
+              <span className="nav-symbol">👤</span>
+            )}
+            <span>{memberSession.pseudo}</span>
+          </Link>
+        )}
       </nav>
 
       {/* Hamburger — mobile only */}
@@ -98,6 +120,12 @@ export default function SiteNav() {
             <span className="nav-symbol">◇</span>
             <span>Association</span>
           </a>
+          {memberSession && (
+            <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
+              <span className="nav-symbol">👤</span>
+              <span>{memberSession.pseudo}</span>
+            </Link>
+          )}
         </div>
       )}
     </header>
