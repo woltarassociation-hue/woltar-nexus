@@ -25,19 +25,18 @@ body {
   position: fixed;
   inset: 0;
   z-index: -3;
-  background:
+
+  background-color: #8b0000;
+
+  background-image:
     radial-gradient(
-      circle,
-      rgba(255,255,255,0.045) 0 42px,
-      transparent 44px
-    ),
-    linear-gradient(
-      180deg,
-      #8f0000 0%,
-      #730000 100%
+      circle at center,
+      rgba(255,255,255,0.035) 0%,
+      rgba(255,255,255,0.025) 18%,
+      transparent 19%
     );
 
-  background-size: 140px 140px;
+  background-size: 120px 120px;
 }
 
 .site::before {
