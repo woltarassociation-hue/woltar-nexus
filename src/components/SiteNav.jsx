@@ -64,10 +64,19 @@ export default function SiteNav() {
       </nav>
 
       {/* Logo centré — imposant */}
-      <Link to="/" className="nav-brand" onClick={close}>
-        <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
-        <span className="nav-wordmark">woltar.net</span>
-      </Link>
+      <div className="nav-brand">
+        <Link to="/" className="nav-logo-link" onClick={close}>
+          <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
+        </Link>
+        <a
+          href="https://www.woltar.net"
+          className="nav-wordmark"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          woltar.net
+        </a>
+      </div>
 
       {/* Right links — desktop */}
       <nav className="nav-right">

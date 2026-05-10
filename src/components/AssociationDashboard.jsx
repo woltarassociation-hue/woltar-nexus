@@ -205,7 +205,7 @@ export default function AssociationDashboard() {
       if (form.coverFile) {
         coverUrl = await uploadCoverImage(form.coverFile);
       }
-      const record = await saveArticle({
+      const { record, syncOk, syncError } = await saveArticle({
         id: form.id || undefined,
         title: form.title,
         author: form.author,
@@ -228,13 +228,20 @@ export default function AssociationDashboard() {
       if (status === "published") {
         const dest = SECTION_MAP[form.category];
         setFeedback({
-          type: "success",
-          message: `Article publié dans la catégorie "${dest?.label || form.category}".`,
+          type: syncError ? "warning" : "success",
+          message: syncError
+            ? `Article publié localement dans "${dest?.label || form.category}". (Sync Supabase échouée — pas de panique, l'article est bien là.)`
+            : `Article publié dans la catégorie "${dest?.label || form.category}".${syncOk ? " (Supabase ✓)" : ""}`,
           route: dest?.route,
         });
         setForm(EMPTY_FORM);
       } else {
-        setFeedback({ type: "success", message: "Brouillon enregistré." });
+        setFeedback({
+          type: syncError ? "warning" : "success",
+          message: syncError
+            ? `Brouillon enregistré localement. (Sync Supabase échouée.)`
+            : "Brouillon enregistré.",
+        });
         setForm((f) => ({ ...f, id: record.id, coverUrl, coverFile: null }));
       }
     } catch (err) {
