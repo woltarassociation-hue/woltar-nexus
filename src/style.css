@@ -26,9 +26,18 @@ body {
   inset: 0;
   z-index: -3;
   background:
-    radial-gradient(circle, rgba(255,255,255,0.10) 0 58px, transparent 60px),
-    linear-gradient(135deg, #940000, #5c0000);
-  background-size: 170px 170px;
+    radial-gradient(
+      circle,
+      rgba(255,255,255,0.045) 0 42px,
+      transparent 44px
+    ),
+    linear-gradient(
+      180deg,
+      #8f0000 0%,
+      #730000 100%
+    );
+
+  background-size: 140px 140px;
 }
 
 .site::before {
