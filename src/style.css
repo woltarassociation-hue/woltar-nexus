@@ -20,6 +20,21 @@ body {
   overflow-x: hidden;
 }
 
+.site::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.45) 1px, transparent 1px),
+    radial-gradient(circle, rgba(168,85,247,0.35) 1px, transparent 1px),
+    radial-gradient(circle, rgba(59,130,246,0.30) 1px, transparent 1px);
+  background-size: 120px 120px, 180px 180px, 240px 240px;
+  animation: sparkleMove 18s linear infinite;
+  opacity: 0.35;
+}
+
 .red-pattern {
   position: fixed;
   inset: 0;
@@ -325,7 +340,120 @@ footer {
   font-weight: bold;
 }
 
+/* SECTION TRAVAUX EN COURS */
+.work-in-progress {
+  position: relative;
+  margin: 0 auto 80px;
+  width: min(1180px, 94%);
+  scroll-margin-top: 230px;
+}
+
+.work-in-progress-panel {
+  background: linear-gradient(135deg, rgba(20,20,40,0.8) 0%, rgba(40,15,50,0.85) 100%);
+  border: 2px solid rgba(168,85,247,0.4);
+  border-radius: 28px;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+  box-shadow:
+    0 0 40px rgba(168,85,247,0.3),
+    0 0 80px rgba(59,130,246,0.2),
+    inset 0 0 30px rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
+  animation: hoverFloat 4s ease-in-out infinite;
+}
+
+.work-in-progress-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(45deg, transparent 30%, rgba(168,85,247,0.1) 50%, transparent 70%);
+  animation: holoShift 8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.work-in-progress-panel::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background:
+    radial-gradient(circle at 20% 50%, rgba(168,85,247,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(59,130,246,0.1) 0%, transparent 50%);
+  animation: particleFloat 15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.work-in-progress-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.work-in-progress-title {
+  color: #ff0099;
+  font-size: 36px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-shadow: 0 0 20px rgba(255,0,153,0.5);
+  letter-spacing: 1px;
+  animation: glow 3s ease-in-out infinite;
+}
+
+.work-in-progress-text {
+  color: #e0e0ff;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 10px rgba(168,85,247,0.3);
+}
+
 /* ANIMATIONS */
+@keyframes sparkleMove {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 120px 240px, -180px 180px, 240px -120px; }
+}
+
+@keyframes hoverFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes holoShift {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateX(-100%);
+  }
+  50% {
+    opacity: 0.15;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes particleFloat {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(255,0,153,0.5), 0 0 40px rgba(168,85,247,0.2);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(255,0,153,0.8), 0 0 60px rgba(168,85,247,0.4);
+  }
+}
+
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -388,5 +516,23 @@ footer {
 
   .section {
     scroll-margin-top: 20px;
+  }
+
+  .work-in-progress-panel {
+    padding: 32px;
+  }
+
+  .work-in-progress-title {
+    font-size: 28px;
+    margin-bottom: 16px;
+  }
+
+  .work-in-progress-text {
+    font-size: 16px;
+  }
+
+  .work-in-progress {
+    width: 94%;
+    margin: 0 auto 60px;
   }
 }

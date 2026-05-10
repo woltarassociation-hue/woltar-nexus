@@ -83,11 +83,14 @@ export default function App() {
       </section>
 
       <Section id="histoire" title="Woltar et son histoire">
-        <p>
-          Woltar est un univers virtuel communautaire où les joueurs adoptent,
-          font évoluer et accompagnent leurs Woltariens dans leur vie sociale,
-          familiale et professionnelle.
-        </p>
+        <div className="work-in-progress">
+          <div className="work-in-progress-panel">
+            <div className="work-in-progress-content">
+              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
+            </div>
+          </div>
+        </div>
       </Section>
 
       <Section id="events" title="Événements">
@@ -250,35 +253,35 @@ export default function App() {
       </Section>
 
       <Section id="fanarts" title="Fan-arts">
-        <div className="cards-grid">
-          <Card title="Galerie" text="Espace dédié aux créations des joueurs." />
-          <Card title="Artistes" text="Mise en avant des membres créatifs." />
-          <Card title="Règles" text="Formats, crédits et conditions de partage." />
+        <div className="work-in-progress">
+          <div className="work-in-progress-panel">
+            <div className="work-in-progress-content">
+              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
+            </div>
+          </div>
         </div>
       </Section>
 
       <Section id="rp" title="RP">
-        <p style={{ marginBottom: "30px" }}>
-          Retrouvez ici les règles RP, les intrigues et les fiches personnages liées à l’univers Woltar.
-        </p>
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Fiches Personnages</h3>
-          <div className="cards-grid">
-            <Card title="Fiches RP" text="Créez et consultez les fiches de vos personnages." />
-            <Card title="Personnages" text="Galerie des Woltariens et Woltariennes." />
-            <Card title="Règles RP" text="Normes et cadre narratif de l’univers." />
+        <div className="work-in-progress">
+          <div className="work-in-progress-panel">
+            <div className="work-in-progress-content">
+              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
+            </div>
           </div>
         </div>
       </Section>
 
       <Section id="lowtar" title="Lowtar">
-        <p>
-          Lowtar est l’univers complémentaire de Woltar, un espace pour explorer d’autres facettes de votre créativité communautaire.
-        </p>
-        <div className="cards-grid" style={{ marginTop: "30px" }}>
-          <Card title="Univers" text="Explorez le monde de Lowtar." />
-          <Card title="Créations" text="Partage tes créations Lowtar." />
-          <Card title="Communauté" text="Rejoins la communauté Lowtar." />
+        <div className="work-in-progress">
+          <div className="work-in-progress-panel">
+            <div className="work-in-progress-content">
+              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
+            </div>
+          </div>
         </div>
       </Section>
 
