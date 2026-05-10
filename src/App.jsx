@@ -1,18 +1,11 @@
 import { useState, useEffect } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, Link } from "react-router-dom";
 import AssociationDashboard from "./components/AssociationDashboard.jsx";
-import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
+import SiteNav from "./components/SiteNav.jsx";
+import CategoryPage from "./pages/CategoryPage.jsx";
+import ArticlePage from "./pages/ArticlePage.jsx";
+import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import "./style.css";
-
-const sections = [
-  { id: "accueil",    label: "Accueil",    icon: "🏠" },
-  { id: "histoire",   label: "Histoire",   icon: "📖" },
-  { id: "actualites", label: "Actualités", icon: "✦" },
-  { id: "events",     label: "Événements", icon: "🎪" },
-  { id: "fanarts",    label: "Fan-arts",   icon: "🎨" },
-  { id: "rp",         label: "RP",         icon: "🎭" },
-  { id: "equipes",    label: "Équipe",     icon: "👥" },
-];
 
 const stats = [
   "Agilité", "Perception", "Chance", "Mémoire",
@@ -38,7 +31,7 @@ const newsSlides = [
     category: "Actualités",
     subcategory: "Prévention",
     title: "L'IA n'est pas neutre",
-    text: "Cette affiche de prévention rappelle que l'utilisation de l'intelligence artificielle possède un impact réel sur les artistes, leurs œuvres et l'économie créative. Woltar.net encourage une utilisation responsable, transparente et respectueuse des créateurs.",
+    text: "Cette affiche de prévention rappelle que l'utilisation de l'intelligence artificielle a un impact réel sur les artistes, leurs œuvres et l'économie créative. Woltar.net encourage une utilisation responsable, transparente et respectueuse des créateurs.",
     image: "/affiche_prevention_1.png",
   },
   {
@@ -59,7 +52,34 @@ const CATEGORY_META = {
   rp:          { label: "RP",         icon: "🎭" },
 };
 
-/* ── Custom hook ─────────────────────────────────────────── */
+const HOME_CATEGORIES = [
+  {
+    href: "/actualites",
+    icon: "✦",
+    label: "Actualités",
+    desc: "Mises à jour, prévention et règles communautaires.",
+  },
+  {
+    href: "/evenements",
+    icon: "🎪",
+    label: "Événements",
+    desc: "Animations RP, concours et festivités Woltar.",
+  },
+  {
+    href: "/fanarts",
+    icon: "🎨",
+    label: "Fan-arts",
+    desc: "Créations artistiques de la communauté.",
+  },
+  {
+    href: "/rp",
+    icon: "🎭",
+    label: "RP",
+    desc: "Récits, intrigues et aventures de l'univers.",
+  },
+];
+
+/* ── Custom hook ──────────────────────────────────────────── */
 
 function usePublishedArticles(categories) {
   const key = categories.join(",");
@@ -77,18 +97,20 @@ function usePublishedArticles(categories) {
   return articles;
 }
 
-/* ── Router ──────────────────────────────────────────────── */
+/* ── Router ───────────────────────────────────────────────── */
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MainSite />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
+      <Route path="/:category/:slug" element={<ArticlePage />} />
+      <Route path="/:category" element={<CategoryPage />} />
     </Routes>
   );
 }
 
-/* ── Main site ───────────────────────────────────────────── */
+/* ── Page d'accueil ───────────────────────────────────────── */
 
 function MainSite() {
   const navigate = useNavigate();
@@ -99,7 +121,9 @@ function MainSite() {
   const [pseudoJoueur, setPseudoJoueur] = useState("");
   const [nomWoltarien, setNomWoltarien] = useState("");
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
-  const [navOpen, setNavOpen] = useState(false);
+
+  const allCategories = Object.keys(CATEGORY_META);
+  const recentArticles = usePublishedArticles(allCategories).slice(0, 4);
 
   const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
   const remaining = 40 - total;
@@ -120,43 +144,9 @@ function MainSite() {
     <div className="site">
       <div className="red-pattern" />
 
-      <header className="navbar">
-        <a href="#accueil" className="nav-brand">
-          <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
-        </a>
+      <SiteNav />
 
-        <button
-          className={`nav-hamburger${navOpen ? " is-open" : ""}`}
-          onClick={() => setNavOpen((v) => !v)}
-          aria-label="Menu"
-          aria-expanded={navOpen}
-        >
-          <span /><span /><span />
-        </button>
-
-        <nav className={`nav-links${navOpen ? " is-open" : ""}`}>
-          {sections.map((section) => (
-            <a
-              key={section.id}
-              href={`#${section.id}`}
-              className="nav-link"
-              onClick={() => setNavOpen(false)}
-            >
-              <span className="nav-symbol">{section.icon}</span>
-              <span>{section.label}</span>
-            </a>
-          ))}
-          <a
-            href="#association"
-            className="nav-link nav-link--association"
-            onClick={() => setNavOpen(false)}
-          >
-            <span className="nav-symbol">◇</span>
-            <span>Association</span>
-          </a>
-        </nav>
-      </header>
-
+      {/* ── Hero ── */}
       <section id="accueil" className="hero">
         <div className="hero-content">
           <Carousel
@@ -171,25 +161,52 @@ function MainSite() {
             Un système planétaire perdu dans l'espace, habité par les
             Woltariens, Woltariennes et Woltarions.
           </p>
+          <div className="hero-card-cats">
+            {HOME_CATEGORIES.map((c) => (
+              <a key={c.href} href={c.href} className="hero-cat-pill">
+                {c.icon} {c.label}
+              </a>
+            ))}
+          </div>
         </div>
       </section>
 
-      <Section id="actualites" title="Actualités">
-        <div className="cards-grid">
-          <Card title="Actualités" text="Mises à jour, nouveautés et annonces générales." onClick={() => setCurrentNewsIndex(1)} isClickable />
-          <Card title="Prévention" text="Affiches, rappels et sensibilisation communautaire." onClick={() => setCurrentNewsIndex(2)} isClickable />
-          <Card title="Règles" text="Droits d'auteur, cadre communautaire et règles de vie." onClick={() => setCurrentNewsIndex(3)} isClickable />
+      {/* ── Catégories en vedette ── */}
+      <section className="section home-categories-section">
+        <h2>Explorez l'univers Woltar</h2>
+        <div className="home-cat-grid">
+          {HOME_CATEGORIES.map((cat) => (
+            <a key={cat.href} href={cat.href} className="home-cat-card">
+              <span className="home-cat-icon">{cat.icon}</span>
+              <span className="home-cat-label">{cat.label}</span>
+              <span className="home-cat-desc">{cat.desc}</span>
+              <span className="home-cat-cta">Voir les articles →</span>
+            </a>
+          ))}
         </div>
-        <PublishedArticleList categories={["actualites", "prevention", "regles"]} />
-      </Section>
+      </section>
 
+      {/* ── Articles récents ── */}
+      {recentArticles.length > 0 && (
+        <section className="section recent-articles-section">
+          <h2>Derniers articles</h2>
+          <div className="recent-grid">
+            {recentArticles.map((article) => (
+              <RecentArticleCard key={article.id} article={article} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Histoire ── */}
       <Section id="histoire" title="Woltar et son histoire">
         <WorkInProgress />
       </Section>
 
+      {/* ── Événements ── */}
       <Section id="events" title="Événements">
         <div className="event-box">
-          <h3 className="event-box-title">Event Officiel</h3>
+          <h3 className="event-box-title">Événement officiel</h3>
           <div className="cards-grid">
             <Card title="Animations RP" text="Scènes, intrigues et défis narratifs." />
             <Card title="Concours" text="Créations, fan-arts et participations." />
@@ -205,17 +222,27 @@ function MainSite() {
         {showFormRp && (
           <div className="form-rp-box">
             <p className="form-rp-disclaimer">
-              Seuls les joueurs ayant un compte et un woltarien(ne) adulte peuvent s'inscrire.
+              Seuls les joueurs possédant un compte et un(e) woltarien(ne) adulte peuvent s'inscrire.
             </p>
 
-            <label className="form-label form-label--cyan">Pseudo du joueur in game</label>
-            <input className="form-input" placeholder="Votre pseudo" value={pseudoJoueur} onChange={(e) => setPseudoJoueur(e.target.value)} />
+            <label className="form-label form-label--cyan">Pseudo du joueur en jeu</label>
+            <input
+              className="form-input"
+              placeholder="Votre pseudo"
+              value={pseudoJoueur}
+              onChange={(e) => setPseudoJoueur(e.target.value)}
+            />
 
-            <label className="form-label form-label--light">Prénom et NOM du woltarien(ne) participant(e)</label>
-            <input className="form-input" placeholder="Prénom et nom" value={nomWoltarien} onChange={(e) => setNomWoltarien(e.target.value)} />
+            <label className="form-label form-label--light">Prénom et NOM du/de la woltarien(ne) participant(e)</label>
+            <input
+              className="form-input"
+              placeholder="Prénom et nom"
+              value={nomWoltarien}
+              onChange={(e) => setNomWoltarien(e.target.value)}
+            />
 
-            <h3 className="form-stats-title">Répartition des points de caractéristiques (40 pts)</h3>
-            <p className="form-stats-hint">Min: 0 | Max: 10 par statistique | Total obligatoire: 40 points</p>
+            <h3 className="form-stats-title">Répartition des caractéristiques (40 pts)</h3>
+            <p className="form-stats-hint">Min : 0 | Max : 10 par statistique | Total obligatoire : 40 points</p>
 
             <div className="stats-form-grid">
               {stats.map((stat) => (
@@ -236,11 +263,14 @@ function MainSite() {
             </div>
 
             <div className={`form-points${remaining === 0 ? " form-points--ok" : " form-points--warn"}`}>
-              Total: {total}/40 — Points restants: {remaining}
+              Total : {total}/40 — Points restants : {remaining}
             </div>
 
-            <button disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()} className="form-submit-btn">
-              Envoyez sa candidature
+            <button
+              disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
+              className="form-submit-btn"
+            >
+              Envoyer la candidature
             </button>
 
             <button onClick={() => setShowFormRp(false)} className="form-close-btn">
@@ -250,35 +280,31 @@ function MainSite() {
         )}
 
         <div className="event-box">
-          <h3 className="event-box-title">Event Joueurs</h3>
+          <h3 className="event-box-title">Événements joueurs</h3>
           <div className="cards-grid">
             <Card title="Galerie" text="Espace dédié aux créations des joueurs." />
             <Card title="Annonces" text="Événements et activités communautaires." />
           </div>
         </div>
 
-        <PublishedArticleList categories={["evenements"]} />
+        <div className="section-see-more">
+          <a href="/evenements" className="section-see-more-btn">
+            Voir tous les articles Événements →
+          </a>
+        </div>
       </Section>
 
-      <Section id="fanarts" title="Fan-arts">
-        <WorkInProgress />
-        <PublishedArticleList categories={["fanarts"]} />
-      </Section>
-
-      <Section id="rp" title="RP">
-        <WorkInProgress />
-        <PublishedArticleList categories={["rp"]} />
-      </Section>
-
-      <Section id="lowtar" title="Lowtar">
+      {/* ── Équipe ── */}
+      <Section id="equipes" title="L'équipe Woltar">
         <WorkInProgress />
       </Section>
 
+      {/* ── Association ── */}
       <Section id="association" title="Espace association">
         <div className="association-access">
           <div className="association-access-panel">
             <div className="association-access-icon">◇</div>
-            <div className="association-access-title">Espace réservé</div>
+            <div className="association-access-title">Studio de publication</div>
             <p className="association-access-text">
               Accédez au studio de création pour rédiger, mettre en forme et
               publier les articles de l'association Woltar.
@@ -294,83 +320,62 @@ function MainSite() {
       </Section>
 
       <footer>
-        <p>© Woltar.com 2000-2022 — Woltar.net 2023-2026. Tous droits réservés.</p>
+        <p>© Woltar.com 2000–2022 — Woltar.net 2023–2026. Tous droits réservés.</p>
       </footer>
     </div>
   );
 }
 
-/* ── Published article display ───────────────────────────── */
+/* ── Recent article card (home page) ─────────────────────── */
 
-function PublishedArticleList({ categories }) {
-  const articles = usePublishedArticles(categories);
-  if (articles.length === 0) return null;
-  return (
-    <div className="pub-list">
-      <h3 className="pub-list-heading">Articles publiés</h3>
-      <div className="pub-list-grid">
-        {articles.map((article) => (
-          <PublicArticleCard key={article.id} article={article} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PublicArticleCard({ article }) {
-  const [expanded, setExpanded] = useState(false);
-  const fontStack = getFontStack(article.font);
+function RecentArticleCard({ article }) {
+  const navigate = useNavigate();
   const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
+  const fontStack = getFontStack(article.font);
+  const readTime = estimateReadTime(article.content);
 
   return (
     <article
-      className="pub-card"
-      style={{ background: article.bgColor || "white", fontFamily: fontStack }}
+      className="recent-card"
+      onClick={() => navigate(`/${article.category}/${article.slug}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(`/${article.category}/${article.slug}`)}
     >
       {article.coverUrl && (
-        <div className="pub-card-cover">
+        <div className="recent-card-cover">
           <img src={article.coverUrl} alt={article.title} />
         </div>
       )}
-      <div className="pub-card-body">
-        <span className="pub-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
+      <div className="recent-card-body">
+        <span className="recent-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
           {meta.icon} {meta.label}
         </span>
-        <h3 className="pub-card-title" style={{ color: article.titleColor, fontFamily: fontStack }}>
+        <h3
+          className="recent-card-title"
+          style={{ fontFamily: fontStack, color: article.titleColor }}
+        >
           {article.title}
         </h3>
         {article.summary && (
-          <p className="pub-card-summary" style={{ color: article.textColor }}>
+          <p className="recent-card-summary" style={{ color: article.textColor }}>
             {article.summary}
           </p>
         )}
-        {expanded && article.content && (
-          <div className="pub-card-content" style={{ color: article.textColor }}>
-            {article.content.split("\n").map((line, i) =>
-              line.trim() ? <p key={i}>{line}</p> : null
-            )}
-          </div>
-        )}
-        <div className="pub-card-footer">
-          <button
-            className="pub-card-toggle"
-            style={{ color: article.accentColor || "#1fa8dc" }}
-            onClick={() => setExpanded((v) => !v)}
-          >
-            {expanded ? "Réduire ↑" : "Lire la suite →"}
-          </button>
-          <span className="pub-card-date">
+        <div className="recent-card-footer">
+          <span className="recent-card-date">
             {new Date(article.createdAt).toLocaleDateString("fr-FR", {
               day: "numeric", month: "long", year: "numeric",
             })}
           </span>
+          <span className="recent-card-read">{readTime} min</span>
         </div>
       </div>
     </article>
   );
 }
 
-/* ── Shared components ───────────────────────────────────── */
+/* ── Composants partagés ──────────────────────────────────── */
 
 function Section({ id, title, children }) {
   return (
@@ -419,13 +424,18 @@ function Carousel({ slides, currentIndex, setCurrentIndex }) {
     <div className="carousel">
       <div className="carousel-track">
         {slides.map((slide, idx) => (
-          <div key={idx} className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}>
+          <div
+            key={idx}
+            className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}
+          >
             <img src={slide.image} alt={slide.title} className="carousel-img" />
             <div className="carousel-overlay" />
             <div className="carousel-content">
               <div className="carousel-badges">
                 <span className="carousel-tag">{slide.category}</span>
-                {slide.subcategory && <span className="carousel-subtag">/ {slide.subcategory}</span>}
+                {slide.subcategory && (
+                  <span className="carousel-subtag">/ {slide.subcategory}</span>
+                )}
               </div>
               <h2 className="carousel-title">{slide.title}</h2>
               <p className="carousel-body">{slide.text}</p>

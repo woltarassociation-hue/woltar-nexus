@@ -84,17 +84,19 @@ const COLOR_PRESETS = [
 ];
 
 const SECTION_MAP = {
-  actualites: { label: "Actualités", anchor: "#actualites" },
-  prevention:  { label: "Actualités", anchor: "#actualites" },
-  regles:      { label: "Actualités", anchor: "#actualites" },
-  evenements:  { label: "Événements", anchor: "#events" },
-  fanarts:     { label: "Fan-arts",   anchor: "#fanarts" },
-  rp:          { label: "RP",         anchor: "#rp" },
+  actualites: { label: "Actualités",  route: "/actualites" },
+  prevention:  { label: "Prévention", route: "/actualites" },
+  regles:      { label: "Règles",     route: "/actualites" },
+  evenements:  { label: "Événements", route: "/evenements" },
+  fanarts:     { label: "Fan-arts",   route: "/fanarts" },
+  rp:          { label: "RP",         route: "/rp" },
 };
 
 const EMPTY_FORM = {
   id: null,
   title: "",
+  author: "",
+  tags: "",
   category: "actualites",
   summary: "",
   content: "",
@@ -187,6 +189,8 @@ export default function AssociationDashboard() {
       const record = await saveArticle({
         id: form.id || undefined,
         title: form.title,
+        author: form.author,
+        tags: form.tags,
         category: form.category,
         summary: form.summary,
         content: form.content,
@@ -203,8 +207,8 @@ export default function AssociationDashboard() {
         const dest = SECTION_MAP[form.category];
         setFeedback({
           type: "success",
-          message: `Article publié dans la section "${dest?.label || form.category}" du site.`,
-          anchor: dest?.anchor,
+          message: `Article publié dans la catégorie "${dest?.label || form.category}".`,
+          route: dest?.route,
         });
         setForm(EMPTY_FORM);
       } else {
@@ -236,7 +240,7 @@ export default function AssociationDashboard() {
         </button>
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
-          <span className="db-header-title">Studio Association</span>
+          <span className="db-header-title">Studio de publication</span>
         </div>
         <span className={`db-status-pill db-status-pill--${form.status}`}>
           {form.status === "published" ? "● Publié" : "○ Brouillon"}
@@ -304,14 +308,13 @@ export default function AssociationDashboard() {
             {feedback && (
               <div className={`db-feedback db-feedback--${feedback.type}`}>
                 <span>{feedback.type === "success" ? "✓" : "✕"} {feedback.message}</span>
-                {feedback.anchor && (
-                  <a
+                {feedback.route && (
+                  <button
                     className="db-feedback-link"
-                    href={`/${feedback.anchor}`}
-                    onClick={() => navigate("/" + feedback.anchor)}
+                    onClick={() => navigate(feedback.route)}
                   >
                     Voir sur le site →
-                  </a>
+                  </button>
                 )}
               </div>
             )}
@@ -338,9 +341,25 @@ export default function AssociationDashboard() {
                 <label className="db-label">Titre de l'article</label>
                 <input
                   className="db-input"
-                  placeholder="Un titre accrocheur..."
+                  placeholder="Un titre accrocheur…"
                   value={form.title}
                   onChange={(e) => set("title", e.target.value)}
+                />
+
+                <label className="db-label">Auteur</label>
+                <input
+                  className="db-input"
+                  placeholder="Nom de l'auteur ou de l'autrice…"
+                  value={form.author}
+                  onChange={(e) => set("author", e.target.value)}
+                />
+
+                <label className="db-label">Tags (séparés par des virgules)</label>
+                <input
+                  className="db-input"
+                  placeholder="annonce, communauté, 2026…"
+                  value={form.tags}
+                  onChange={(e) => set("tags", e.target.value)}
                 />
 
                 <label className="db-label">Catégorie</label>
