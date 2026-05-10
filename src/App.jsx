@@ -1,14 +1,17 @@
 import { useState, useEffect } from "react";
+import { Routes, Route, useNavigate } from "react-router-dom";
+import AssociationDashboard from "./components/AssociationDashboard.jsx";
+import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import "./style.css";
 
 const sections = [
-  { id: "accueil", label: "Accueil", icon: "🏠" },
-  { id: "histoire", label: "Histoire", icon: "📖" },
+  { id: "accueil",    label: "Accueil",    icon: "🏠" },
+  { id: "histoire",   label: "Histoire",   icon: "📖" },
   { id: "actualites", label: "Actualités", icon: "✦" },
-  { id: "events", label: "Événements", icon: "🎪" },
-  { id: "fanarts", label: "Fan-arts", icon: "🎨" },
-  { id: "rp", label: "RP", icon: "🎭" },
-  { id: "equipes", label: "Équipe", icon: "👥" },
+  { id: "events",     label: "Événements", icon: "🎪" },
+  { id: "fanarts",    label: "Fan-arts",   icon: "🎨" },
+  { id: "rp",         label: "RP",         icon: "🎭" },
+  { id: "equipes",    label: "Équipe",     icon: "👥" },
 ];
 
 const stats = [
@@ -47,7 +50,48 @@ const newsSlides = [
   },
 ];
 
+const CATEGORY_META = {
+  actualites: { label: "Actualités",  icon: "✦" },
+  prevention:  { label: "Prévention", icon: "🛡" },
+  regles:      { label: "Règles",     icon: "📋" },
+  evenements:  { label: "Événements", icon: "🎪" },
+  fanarts:     { label: "Fan-arts",   icon: "🎨" },
+  rp:          { label: "RP",         icon: "🎭" },
+};
+
+/* ── Custom hook ─────────────────────────────────────────── */
+
+function usePublishedArticles(categories) {
+  const key = categories.join(",");
+  const [articles, setArticles] = useState(() => getPublishedByCategories(categories));
+  useEffect(() => {
+    const cats = key.split(",");
+    const refresh = () => setArticles(getPublishedByCategories(cats));
+    window.addEventListener("woltar:articles", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("woltar:articles", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, [key]);
+  return articles;
+}
+
+/* ── Router ──────────────────────────────────────────────── */
+
 export default function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<MainSite />} />
+      <Route path="/association/dashboard" element={<AssociationDashboard />} />
+    </Routes>
+  );
+}
+
+/* ── Main site ───────────────────────────────────────────── */
+
+function MainSite() {
+  const navigate = useNavigate();
   const [values, setValues] = useState(
     Object.fromEntries(stats.map((stat) => [stat, 5]))
   );
@@ -102,14 +146,25 @@ export default function App() {
               <span>{section.label}</span>
             </a>
           ))}
+          <a
+            href="#association"
+            className="nav-link nav-link--association"
+            onClick={() => setNavOpen(false)}
+          >
+            <span className="nav-symbol">◇</span>
+            <span>Association</span>
+          </a>
         </nav>
       </header>
 
       <section id="accueil" className="hero">
         <div className="hero-content">
-          <Carousel slides={newsSlides} currentIndex={currentNewsIndex} setCurrentIndex={setCurrentNewsIndex} />
+          <Carousel
+            slides={newsSlides}
+            currentIndex={currentNewsIndex}
+            setCurrentIndex={setCurrentNewsIndex}
+          />
         </div>
-
         <div className="hero-card">
           <h2>Bienvenue sur Woltar</h2>
           <p>
@@ -121,36 +176,15 @@ export default function App() {
 
       <Section id="actualites" title="Actualités">
         <div className="cards-grid">
-          <Card
-            title="Actualités"
-            text="Mises à jour, nouveautés et annonces générales."
-            onClick={() => setCurrentNewsIndex(1)}
-            isClickable
-          />
-          <Card
-            title="Prévention"
-            text="Affiches, rappels et sensibilisation communautaire."
-            onClick={() => setCurrentNewsIndex(2)}
-            isClickable
-          />
-          <Card
-            title="Règles"
-            text="Droits d'auteur, cadre communautaire et règles de vie."
-            onClick={() => setCurrentNewsIndex(3)}
-            isClickable
-          />
+          <Card title="Actualités" text="Mises à jour, nouveautés et annonces générales." onClick={() => setCurrentNewsIndex(1)} isClickable />
+          <Card title="Prévention" text="Affiches, rappels et sensibilisation communautaire." onClick={() => setCurrentNewsIndex(2)} isClickable />
+          <Card title="Règles" text="Droits d'auteur, cadre communautaire et règles de vie." onClick={() => setCurrentNewsIndex(3)} isClickable />
         </div>
+        <PublishedArticleList categories={["actualites", "prevention", "regles"]} />
       </Section>
 
       <Section id="histoire" title="Woltar et son histoire">
-        <div className="work-in-progress">
-          <div className="work-in-progress-panel">
-            <div className="work-in-progress-content">
-              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
-              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
-            </div>
-          </div>
-        </div>
+        <WorkInProgress />
       </Section>
 
       <Section id="events" title="Événements">
@@ -171,32 +205,14 @@ export default function App() {
         {showFormRp && (
           <div className="form-rp-box">
             <p className="form-rp-disclaimer">
-              Seul les joueurs ayant un compte et un woltarien(ne)s adultes peuvent s'inscrire
+              Seuls les joueurs ayant un compte et un woltarien(ne) adulte peuvent s'inscrire.
             </p>
 
-            <div>
-              <label className="form-label form-label--cyan">
-                Pseudo du joueur in game
-              </label>
-              <input
-                className="form-input"
-                placeholder="Votre pseudo"
-                value={pseudoJoueur}
-                onChange={(e) => setPseudoJoueur(e.target.value)}
-              />
-            </div>
+            <label className="form-label form-label--cyan">Pseudo du joueur in game</label>
+            <input className="form-input" placeholder="Votre pseudo" value={pseudoJoueur} onChange={(e) => setPseudoJoueur(e.target.value)} />
 
-            <div>
-              <label className="form-label form-label--light">
-                Prénom et NOM du woltarien(ne) participant(e)
-              </label>
-              <input
-                className="form-input"
-                placeholder="Prénom et nom"
-                value={nomWoltarien}
-                onChange={(e) => setNomWoltarien(e.target.value)}
-              />
-            </div>
+            <label className="form-label form-label--light">Prénom et NOM du woltarien(ne) participant(e)</label>
+            <input className="form-input" placeholder="Prénom et nom" value={nomWoltarien} onChange={(e) => setNomWoltarien(e.target.value)} />
 
             <h3 className="form-stats-title">Répartition des points de caractéristiques (40 pts)</h3>
             <p className="form-stats-hint">Min: 0 | Max: 10 par statistique | Total obligatoire: 40 points</p>
@@ -208,23 +224,12 @@ export default function App() {
                     <span className="stat-card-name">{stat}</span>
                     <span className="stat-card-value">{values[stat]}/10</span>
                   </div>
-
                   <div className="stat-bar-bg">
-                    <div
-                      className="stat-bar-fill"
-                      style={{ width: `${(values[stat] / 10) * 100}%` }}
-                    />
+                    <div className="stat-bar-fill" style={{ width: `${(values[stat] / 10) * 100}%` }} />
                   </div>
-
                   <div className="stat-card-controls">
-                    <button
-                      className="stat-btn"
-                      onClick={() => handleStat(stat, Math.max(0, values[stat] - 1))}
-                    >−</button>
-                    <button
-                      className="stat-btn"
-                      onClick={() => handleStat(stat, Math.min(10, values[stat] + 1))}
-                    >+</button>
+                    <button className="stat-btn" onClick={() => handleStat(stat, values[stat] - 1)}>−</button>
+                    <button className="stat-btn" onClick={() => handleStat(stat, values[stat] + 1)}>+</button>
                   </div>
                 </div>
               ))}
@@ -234,10 +239,7 @@ export default function App() {
               Total: {total}/40 — Points restants: {remaining}
             </div>
 
-            <button
-              disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
-              className="form-submit-btn"
-            >
+            <button disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()} className="form-submit-btn">
               Envoyez sa candidature
             </button>
 
@@ -254,49 +256,121 @@ export default function App() {
             <Card title="Annonces" text="Événements et activités communautaires." />
           </div>
         </div>
+
+        <PublishedArticleList categories={["evenements"]} />
       </Section>
 
       <Section id="fanarts" title="Fan-arts">
-        <div className="work-in-progress">
-          <div className="work-in-progress-panel">
-            <div className="work-in-progress-content">
-              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
-              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
-            </div>
-          </div>
-        </div>
+        <WorkInProgress />
+        <PublishedArticleList categories={["fanarts"]} />
       </Section>
 
       <Section id="rp" title="RP">
-        <div className="work-in-progress">
-          <div className="work-in-progress-panel">
-            <div className="work-in-progress-content">
-              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
-              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
-            </div>
-          </div>
-        </div>
+        <WorkInProgress />
+        <PublishedArticleList categories={["rp"]} />
       </Section>
 
       <Section id="lowtar" title="Lowtar">
-        <div className="work-in-progress">
-          <div className="work-in-progress-panel">
-            <div className="work-in-progress-content">
-              <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
-              <div className="work-in-progress-text">Cette section est actuellement en reconstruction.</div>
-            </div>
+        <WorkInProgress />
+      </Section>
+
+      <Section id="association" title="Espace association">
+        <div className="association-access">
+          <div className="association-access-panel">
+            <div className="association-access-icon">◇</div>
+            <div className="association-access-title">Espace réservé</div>
+            <p className="association-access-text">
+              Accédez au studio de création pour rédiger, mettre en forme et
+              publier les articles de l'association Woltar.
+            </p>
+            <button
+              className="association-login-btn"
+              onClick={() => navigate("/association/dashboard")}
+            >
+              Ouvrir le studio →
+            </button>
           </div>
         </div>
       </Section>
 
       <footer>
-        <p>
-          © Woltar.com 2000-2022 — Woltar.net 2023-2026. Tous droits réservés.
-        </p>
+        <p>© Woltar.com 2000-2022 — Woltar.net 2023-2026. Tous droits réservés.</p>
       </footer>
     </div>
   );
 }
+
+/* ── Published article display ───────────────────────────── */
+
+function PublishedArticleList({ categories }) {
+  const articles = usePublishedArticles(categories);
+  if (articles.length === 0) return null;
+  return (
+    <div className="pub-list">
+      <h3 className="pub-list-heading">Articles publiés</h3>
+      <div className="pub-list-grid">
+        {articles.map((article) => (
+          <PublicArticleCard key={article.id} article={article} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PublicArticleCard({ article }) {
+  const [expanded, setExpanded] = useState(false);
+  const fontStack = getFontStack(article.font);
+  const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
+
+  return (
+    <article
+      className="pub-card"
+      style={{ background: article.bgColor || "white", fontFamily: fontStack }}
+    >
+      {article.coverUrl && (
+        <div className="pub-card-cover">
+          <img src={article.coverUrl} alt={article.title} />
+        </div>
+      )}
+      <div className="pub-card-body">
+        <span className="pub-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
+          {meta.icon} {meta.label}
+        </span>
+        <h3 className="pub-card-title" style={{ color: article.titleColor, fontFamily: fontStack }}>
+          {article.title}
+        </h3>
+        {article.summary && (
+          <p className="pub-card-summary" style={{ color: article.textColor }}>
+            {article.summary}
+          </p>
+        )}
+        {expanded && article.content && (
+          <div className="pub-card-content" style={{ color: article.textColor }}>
+            {article.content.split("\n").map((line, i) =>
+              line.trim() ? <p key={i}>{line}</p> : null
+            )}
+          </div>
+        )}
+        <div className="pub-card-footer">
+          <button
+            className="pub-card-toggle"
+            style={{ color: article.accentColor || "#1fa8dc" }}
+            onClick={() => setExpanded((v) => !v)}
+          >
+            {expanded ? "Réduire ↑" : "Lire la suite →"}
+          </button>
+          <span className="pub-card-date">
+            {new Date(article.createdAt).toLocaleDateString("fr-FR", {
+              day: "numeric", month: "long", year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+/* ── Shared components ───────────────────────────────────── */
 
 function Section({ id, title, children }) {
   return (
@@ -304,6 +378,21 @@ function Section({ id, title, children }) {
       <h2>{title}</h2>
       <div>{children}</div>
     </section>
+  );
+}
+
+function WorkInProgress() {
+  return (
+    <div className="work-in-progress">
+      <div className="work-in-progress-panel">
+        <div className="work-in-progress-content">
+          <div className="work-in-progress-title">⚠ Travaux en cours ⚠</div>
+          <div className="work-in-progress-text">
+            Cette section est actuellement en reconstruction.
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -323,7 +412,6 @@ function Card({ title, text, onClick, isClickable }) {
 
 function Carousel({ slides, currentIndex, setCurrentIndex }) {
   if (!slides || slides.length === 0) return null;
-
   const prev = () => setCurrentIndex((i) => (i - 1 + slides.length) % slides.length);
   const next = () => setCurrentIndex((i) => (i + 1) % slides.length);
 
@@ -331,18 +419,13 @@ function Carousel({ slides, currentIndex, setCurrentIndex }) {
     <div className="carousel">
       <div className="carousel-track">
         {slides.map((slide, idx) => (
-          <div
-            key={idx}
-            className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}
-          >
+          <div key={idx} className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}>
             <img src={slide.image} alt={slide.title} className="carousel-img" />
             <div className="carousel-overlay" />
             <div className="carousel-content">
               <div className="carousel-badges">
                 <span className="carousel-tag">{slide.category}</span>
-                {slide.subcategory && (
-                  <span className="carousel-subtag">/ {slide.subcategory}</span>
-                )}
+                {slide.subcategory && <span className="carousel-subtag">/ {slide.subcategory}</span>}
               </div>
               <h2 className="carousel-title">{slide.title}</h2>
               <p className="carousel-body">{slide.text}</p>
@@ -350,16 +433,8 @@ function Carousel({ slides, currentIndex, setCurrentIndex }) {
           </div>
         ))}
 
-        <button className="carousel-arrow carousel-arrow--left" onClick={prev} aria-label="Précédent">
-          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
-            <path d="M8 2L2 9L8 16" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <button className="carousel-arrow carousel-arrow--right" onClick={next} aria-label="Suivant">
-          <svg width="10" height="18" viewBox="0 0 10 18" fill="none">
-            <path d="M2 2L8 9L2 16" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+        <button className="carousel-arrow carousel-arrow--left" onClick={prev} aria-label="Précédent">‹</button>
+        <button className="carousel-arrow carousel-arrow--right" onClick={next} aria-label="Suivant">›</button>
 
         {slides.length > 1 && (
           <div className="carousel-dots">
