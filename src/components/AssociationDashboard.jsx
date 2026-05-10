@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveArticle, uploadCoverImage } from "../lib/supabase";
-import { getAllArticles, deleteArticle, getFontStack } from "../lib/articles";
+import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
 import RichTextEditor from "./RichTextEditor";
@@ -244,6 +244,12 @@ export default function AssociationDashboard() {
     setFeedback(null);
   };
 
+  const handleEditArticle = (article) => {
+    loadDraft(article);
+    setSection("studio");
+    window.scrollTo(0, 0);
+  };
+
   const category = CATEGORIES.find((c) => c.id === form.category);
   const canSave = Boolean(form.title.trim()) && !saving;
 
@@ -256,7 +262,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès" }[section]}
+            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -265,6 +271,12 @@ export default function AssociationDashboard() {
             onClick={() => setSection("studio")}
           >
             ✏ Studio
+          </button>
+          <button
+            className={`db-nav-btn${section === "articles" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("articles")}
+          >
+            📰 Mes articles
           </button>
           <button
             className={`db-nav-btn${section === "candidatures" ? " db-nav-btn--active" : ""}`}
@@ -294,6 +306,7 @@ export default function AssociationDashboard() {
         </button>
       </header>
 
+      {section === "articles" && <ArticlesManager onEdit={handleEditArticle} />}
       {section === "candidatures" && <RPDashboard />}
       {section === "affiche" && <AfficheSection />}
       {section === "profils" && <ProfilesSection />}
@@ -584,6 +597,193 @@ function ColorPicker({ label, value, onChange }) {
   );
 }
 
+/* ── Gestion des articles ───────────────────────────────── */
+
+const CAT_ALL = { id: "all", label: "Tous les articles", icon: "◈" };
+const CAT_LIST = [
+  { id: "actualites",  label: "Actualités",  icon: "✦" },
+  { id: "prevention",  label: "Prévention",  icon: "🛡" },
+  { id: "regles",      label: "Règles",      icon: "📋" },
+  { id: "evenements",  label: "Événements",  icon: "🎪" },
+  { id: "fanarts",     label: "Fan-arts",    icon: "🎨" },
+  { id: "rp",          label: "RP",          icon: "🎭" },
+];
+
+function ArticlesManager({ onEdit }) {
+  const [articles, setArticles] = useState(() => getAllArticles());
+  const [activeCat, setActiveCat] = useState("all");
+  const [search, setSearch] = useState("");
+  const [deleteId, setDeleteId] = useState(null);
+
+  useEffect(() => {
+    const refresh = () => setArticles(getAllArticles());
+    window.addEventListener("woltar:articles", refresh);
+    return () => window.removeEventListener("woltar:articles", refresh);
+  }, []);
+
+  const filtered = articles.filter((a) => {
+    const matchCat = activeCat === "all" || a.category === activeCat;
+    const matchSearch = !search || (a.title || "").toLowerCase().includes(search.toLowerCase());
+    return matchCat && matchSearch;
+  });
+
+  const countByCat = (catId) => articles.filter((a) => a.category === catId).length;
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Supprimer cet article définitivement ?")) return;
+    deleteArticle(id);
+    setDeleteId(null);
+  };
+
+  const handleToggleFeatured = (id) => {
+    toggleFeatured(id);
+  };
+
+  const published = filtered.filter((a) => a.status === "published");
+  const drafts    = filtered.filter((a) => a.status === "draft");
+
+  return (
+    <div className="artmgr-wrap">
+      {/* Top bar */}
+      <div className="artmgr-topbar">
+        <div>
+          <h2 className="artmgr-heading">Mes articles</h2>
+          <p className="artmgr-sub">
+            {articles.length} article{articles.length !== 1 ? "s" : ""} au total —{" "}
+            {articles.filter((a) => a.status === "published").length} publiés,{" "}
+            {articles.filter((a) => a.status === "draft").length} brouillons
+          </p>
+        </div>
+        <input
+          className="artmgr-search"
+          type="search"
+          placeholder="Rechercher par titre…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="artmgr-layout">
+        {/* Sidebar catégories */}
+        <nav className="artmgr-sidebar">
+          {[CAT_ALL, ...CAT_LIST].map((cat) => {
+            const count = cat.id === "all" ? articles.length : countByCat(cat.id);
+            return (
+              <button
+                key={cat.id}
+                className={`artmgr-cat-btn${activeCat === cat.id ? " artmgr-cat-btn--active" : ""}`}
+                onClick={() => setActiveCat(cat.id)}
+              >
+                <span className="artmgr-cat-icon">{cat.icon}</span>
+                <span className="artmgr-cat-label">{cat.label}</span>
+                <span className="artmgr-cat-count">{count}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Liste articles */}
+        <div className="artmgr-main">
+          {filtered.length === 0 ? (
+            <div className="artmgr-empty">
+              <span className="artmgr-empty-icon">📰</span>
+              <p>{search ? "Aucun résultat pour cette recherche." : "Aucun article dans cette catégorie."}</p>
+            </div>
+          ) : (
+            <>
+              {published.length > 0 && (
+                <div className="artmgr-group">
+                  <p className="artmgr-group-label">
+                    Publiés <span className="artmgr-group-count">{published.length}</span>
+                  </p>
+                  {published.map((a) => (
+                    <ArticleRow key={a.id} article={a} onEdit={onEdit} onDelete={handleDelete} onToggleFeatured={handleToggleFeatured} />
+                  ))}
+                </div>
+              )}
+              {drafts.length > 0 && (
+                <div className="artmgr-group">
+                  <p className="artmgr-group-label">
+                    Brouillons <span className="artmgr-group-count">{drafts.length}</span>
+                  </p>
+                  {drafts.map((a) => (
+                    <ArticleRow key={a.id} article={a} onEdit={onEdit} onDelete={handleDelete} onToggleFeatured={handleToggleFeatured} />
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
+  const cat = CAT_LIST.find((c) => c.id === article.category) || { label: article.category, icon: "✦" };
+  const isPublished = article.status === "published";
+
+  return (
+    <div className={`artmgr-row${article.featured ? " artmgr-row--featured" : ""}`}>
+      {/* Thumbnail */}
+      <div className="artmgr-thumb">
+        {article.coverUrl ? (
+          <img src={article.coverUrl} alt="" onError={(e) => { e.target.style.display = "none"; }} />
+        ) : (
+          <span className="artmgr-thumb-icon">{cat.icon}</span>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="artmgr-info">
+        <div className="artmgr-title-line">
+          <span className="artmgr-title">{article.title || "Sans titre"}</span>
+          {article.featured && (
+            <span className="artmgr-featured-badge">⭐ En avant</span>
+          )}
+        </div>
+        <div className="artmgr-meta">
+          <span className="artmgr-cat-tag">{cat.icon} {cat.label}</span>
+          {article.author && <span className="artmgr-author">par {article.author}</span>}
+          <span className="artmgr-date">
+            {new Date(article.updatedAt || article.createdAt).toLocaleDateString("fr-FR", {
+              day: "numeric", month: "short", year: "numeric",
+            })}
+          </span>
+          <span className={`artmgr-status artmgr-status--${article.status}`}>
+            {isPublished ? "● Publié" : "○ Brouillon"}
+          </span>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="artmgr-actions">
+        {isPublished && (
+          <button
+            className={`artmgr-star-btn${article.featured ? " artmgr-star-btn--on" : ""}`}
+            onClick={() => onToggleFeatured(article.id)}
+            title={article.featured ? "Retirer du carousel" : "Mettre en avant dans le carousel"}
+          >
+            {article.featured ? "⭐" : "☆"}
+          </button>
+        )}
+        <button
+          className="artmgr-btn artmgr-btn--edit"
+          onClick={() => onEdit(article)}
+        >
+          ✏ Modifier
+        </button>
+        <button
+          className="artmgr-btn artmgr-btn--delete"
+          onClick={() => onDelete(article.id)}
+        >
+          🗑
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ── Profils & Accès ────────────────────────────────────── */
 
 const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "", password: "" };
@@ -711,8 +911,8 @@ function ProfilesSection() {
             </div>
           </div>
           <div className="prof-form-actions">
-            <button className="db-btn db-btn--publish" onClick={handleSave}>
-              {form.id ? "Enregistrer les modifications" : "Créer le profil"}
+            <button className="db-btn db-btn--publish prof-save-btn" onClick={handleSave}>
+              {form.id ? "✓ Enregistrer les paramètres" : "✓ Créer le profil"}
             </button>
             <button className="db-btn db-btn--cancel" onClick={handleCancel}>Annuler</button>
           </div>

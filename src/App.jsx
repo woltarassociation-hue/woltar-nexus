@@ -146,11 +146,16 @@ function MainSite() {
     return () => window.removeEventListener("woltar:affiche", reload);
   }, []);
 
-  // Carousel : articles publiés en priorité, fallback statique
-  const carouselArticles = usePublishedArticles(CAROUSEL_CATS);
+  // Carousel : articles publiés, featuredés en priorité, fallback statique
+  const allPublishedArticles = usePublishedArticles(Object.keys(CATEGORY_META));
   const newsSlides = useMemo(() => {
-    if (carouselArticles.length === 0) return STATIC_SLIDES;
-    return carouselArticles.slice(0, 6).map((a) => ({
+    if (allPublishedArticles.length === 0) return STATIC_SLIDES;
+    const sorted = [...allPublishedArticles].sort((a, b) => {
+      if (a.featured && !b.featured) return -1;
+      if (!a.featured && b.featured) return 1;
+      return 0;
+    });
+    return sorted.slice(0, 6).map((a) => ({
       category: CATEGORY_META[a.category]?.label || a.category,
       subcategory: a.author || "",
       title: a.title,
@@ -158,7 +163,7 @@ function MainSite() {
       image: a.coverUrl || "/logo_woltar.png",
       href: `/${a.category}/${a.slug}`,
     }));
-  }, [carouselArticles]);
+  }, [allPublishedArticles]);
 
   const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
   const remaining = 40 - total;

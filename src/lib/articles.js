@@ -46,6 +46,16 @@ export function deleteArticle(id) {
   dispatch();
 }
 
+export function toggleFeatured(id) {
+  const all = getAllArticles();
+  const idx = all.findIndex((a) => a.id === id);
+  if (idx >= 0) {
+    all[idx] = { ...all[idx], featured: !all[idx].featured, updatedAt: new Date().toISOString() };
+    localStorage.setItem(KEY, JSON.stringify(all));
+    dispatch();
+  }
+}
+
 export function getPublishedByCategories(categories) {
   return getAllArticles().filter(
     (a) => a.status === "published" && categories.includes(a.category)
