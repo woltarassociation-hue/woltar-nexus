@@ -2,13 +2,13 @@ import { useState } from "react";
 import "./style.css";
 
 const sections = [
-  { id: "accueil", label: "Accueil" },
-  { id: "histoire", label: "Woltar et son histoire" },
-  { id: "events", label: "Évènements" },
-  { id: "formulaires", label: "Formulaires" },
-  { id: "fanarts", label: "Fan-arts" },
-  { id: "rp", label: "RP" },
-  { id: "staff", label: "Staff" },
+  { id: "accueil", label: "Accueil", icon: "/icn_accueil/accueil_icn.png" },
+  { id: "histoire", label: "Woltar et son histoire", icon: "/icn_accueil/story_icn.png" },
+  { id: "events", label: "Évènements", icon: "/icn_accueil/event_icn.png" },
+  { id: "formulaires", label: "Formulaires", icon: "/icn_accueil/formulaire_icn.png" },
+  { id: "fanarts", label: "Fan-arts", icon: "/icn_accueil/fanart_icn.png" },
+  { id: "rp", label: "RP", icon: "/icn_accueil/rp_icn.png" },
+  { id: "staff", label: "Staff", icon: "/icn_accueil/staff_icn.png" },
 ];
 
 const stats = [
@@ -42,13 +42,14 @@ export default function App() {
       <header className="navbar">
         <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
 
-        <nav>
-          {sections.map((section) => (
-            <a key={section.id} href={`#${section.id}`}>
-              {section.label}
-            </a>
-          ))}
-        </nav>
+       <nav className="nav-icons">
+  {sections.map((section) => (
+    <a key={section.id} href={`#${section.id}`} className="nav-item">
+      <img src={section.icon} alt="" className="nav-icon" />
+      <span>{section.label}</span>
+    </a>
+  ))}
+</nav>
       </header>
 
       <section id="accueil" className="hero">
