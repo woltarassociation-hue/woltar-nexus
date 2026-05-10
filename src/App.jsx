@@ -24,10 +24,10 @@ const stats = [
 const newsArticles = [
   {
     id: 1,
-    category: "Animation RP",
+    category: "Événements 2026",
     title: "Event anniversaire 3 ans",
-    accroche: "Event Woltar 2026",
-    text: "Entrez dans l'arène ! Évènement inédit pour l'approche des 3 ans de woltar.net",
+    accroche: "Entrez dans l'arène !",
+    text: "Évènement inédit pour l'approche des 3 ans de Woltar.net",
     image: "/Affiche_Entrez_dans_larene.png",
   },
 ];
@@ -289,24 +289,10 @@ export default function App() {
         </div>
       </Section>
 
-      <Section id="equipes" title="Équipes">
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px", marginBottom: "40px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Membres</h3>
-          <div className="cards-grid">
-            <Card title="Membres" text="L’équipe fondatrice de Woltar.net." />
-          </div>
-        </div>
-
-        <div style={{ background: "rgba(255,255,255,0.6)", borderRadius: "28px", padding: "32px" }}>
-          <h3 style={{ color: "#004477", fontSize: "24px", marginTop: 0, marginBottom: "24px" }}>Contact</h3>
-          <div className="cards-grid">
-            <Card title="Contact" text="Nous rejoindre ou nous contacter." />
-          </div>
-        </div>
-      </Section>
-
       <footer>
-        Woltar.net — Event Hub communautaire
+        <p>
+          © Woltar.com 2000-2022 — Woltar.net 2023-2026. Tous droits réservés.
+        </p>
       </footer>
     </div>
   );
