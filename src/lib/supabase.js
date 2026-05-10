@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { upsertArticle } from "./articles.js";
+import { upsertArticle, deleteArticle } from "./articles.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -18,6 +18,16 @@ export async function saveArticle(article) {
     .select();
   if (error) throw new Error(error.message);
   return data[0] || local;
+}
+
+export async function removeArticle(id) {
+  deleteArticle(id);
+  if (!supabase) return;
+  try {
+    await supabase.from("articles").delete().eq("id", id);
+  } catch {
+    // localStorage déjà mis à jour
+  }
 }
 
 export async function uploadCoverImage(file) {

@@ -60,7 +60,8 @@ export function getArticleBySlug(category, slug) {
 
 export function estimateReadTime(content) {
   if (!content) return 1;
-  const words = content.trim().split(/\s+/).length;
+  const text = content.replace(/<[^>]*>/g, " ");
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.ceil(words / 200));
 }
 
@@ -77,6 +78,12 @@ export const FONT_STACKS = {
   "Cormorant Garamond": "'Cormorant Garamond', serif",
   "EB Garamond": "'EB Garamond', serif",
   Spectral: "'Spectral', serif",
+  "Great Vibes": "'Great Vibes', cursive",
+  Allura: "'Allura', cursive",
+  "Dancing Script": "'Dancing Script', cursive",
+  Parisienne: "'Parisienne', cursive",
+  "Cinzel Decorative": "'Cinzel Decorative', cursive",
+  "Uncial Antiqua": "'Uncial Antiqua', cursive",
 };
 
 export function getFontStack(fontId) {

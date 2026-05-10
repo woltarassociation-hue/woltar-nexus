@@ -51,7 +51,7 @@ export default function ArticlePage() {
   const meta = CATEGORY_META[category] || { label: category, icon: "✦", path: "/" };
   const fontStack = getFontStack(article.font);
   const readTime = estimateReadTime(article.content);
-  const paragraphs = (article.content || "").split("\n").filter((l) => l.trim());
+  const hasHtml = /<[a-z][\s\S]*>/i.test(article.content || "");
 
   return (
     <div
@@ -133,9 +133,16 @@ export default function ArticlePage() {
             className="art-text"
             style={{ fontFamily: fontStack, color: article.textColor || "#1a1020" }}
           >
-            {paragraphs.map((para, i) => (
-              <p key={i} className="art-paragraph">{para}</p>
-            ))}
+            {hasHtml ? (
+              <div
+                className="art-rte-content"
+                dangerouslySetInnerHTML={{ __html: article.content }}
+              />
+            ) : (
+              (article.content || "").split("\n").filter((l) => l.trim()).map((para, i) => (
+                <p key={i} className="art-paragraph">{para}</p>
+              ))
+            )}
           </div>
 
           <div className="art-footer-nav">

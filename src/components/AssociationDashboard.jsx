@@ -2,6 +2,11 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { saveArticle, uploadCoverImage } from "../lib/supabase";
 import { getAllArticles, deleteArticle, getFontStack } from "../lib/articles";
+import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
+import RichTextEditor from "./RichTextEditor";
+
+const stripHtml = (html) =>
+  (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 
 /* ── Constants ───────────────────────────────────────────── */
 
@@ -16,30 +21,38 @@ const CATEGORIES = [
 
 const FONT_GROUPS = [
   {
+    label: "Calligraphique",
+    fonts: [
+      { id: "Great Vibes",      stack: "'Great Vibes', cursive" },
+      { id: "Allura",           stack: "'Allura', cursive" },
+      { id: "Dancing Script",   stack: "'Dancing Script', cursive" },
+      { id: "Parisienne",       stack: "'Parisienne', cursive" },
+    ],
+  },
+  {
+    label: "Fantasy / Médiéval",
+    fonts: [
+      { id: "Cinzel Decorative", stack: "'Cinzel Decorative', cursive" },
+      { id: "Uncial Antiqua",    stack: "'Uncial Antiqua', cursive" },
+      { id: "Cinzel",            stack: "'Cinzel', serif" },
+    ],
+  },
+  {
     label: "Journalistique",
     fonts: [
-      { id: "Georgia",           stack: "Georgia, serif" },
-      { id: "Merriweather",      stack: "'Merriweather', serif" },
-      { id: "Playfair Display",  stack: "'Playfair Display', serif" },
-      { id: "Libre Baskerville", stack: "'Libre Baskerville', serif" },
+      { id: "Playfair Display",   stack: "'Playfair Display', serif" },
+      { id: "Cormorant Garamond", stack: "'Cormorant Garamond', serif" },
+      { id: "Merriweather",       stack: "'Merriweather', serif" },
+      { id: "EB Garamond",        stack: "'EB Garamond', serif" },
     ],
   },
   {
     label: "Moderne",
     fonts: [
       { id: "Inter",      stack: "'Inter', sans-serif" },
-      { id: "Lato",       stack: "'Lato', sans-serif" },
-      { id: "Montserrat", stack: "'Montserrat', sans-serif" },
       { id: "Poppins",    stack: "'Poppins', sans-serif" },
-    ],
-  },
-  {
-    label: "Fantastique / Éditorial",
-    fonts: [
-      { id: "Cinzel",             stack: "'Cinzel', serif" },
-      { id: "Cormorant Garamond", stack: "'Cormorant Garamond', serif" },
-      { id: "EB Garamond",        stack: "'EB Garamond', serif" },
-      { id: "Spectral",           stack: "'Spectral', serif" },
+      { id: "Montserrat", stack: "'Montserrat', sans-serif" },
+      { id: "Lato",       stack: "'Lato', sans-serif" },
     ],
   },
 ];
@@ -115,6 +128,7 @@ const EMPTY_FORM = {
 
 export default function AssociationDashboard() {
   const navigate = useNavigate();
+  const [section, setSection] = useState("studio");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editorTab, setEditorTab] = useState("content");
   const [saving, setSaving] = useState(false);
@@ -240,14 +254,29 @@ export default function AssociationDashboard() {
         </button>
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
-          <span className="db-header-title">Studio de publication</span>
+          <span className="db-header-title">
+            {section === "studio" ? "Studio de publication" : "Candidatures RP"}
+          </span>
         </div>
-        <span className={`db-status-pill db-status-pill--${form.status}`}>
-          {form.status === "published" ? "● Publié" : "○ Brouillon"}
-        </span>
+        <div className="db-header-nav">
+          <button
+            className={`db-nav-btn${section === "studio" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("studio")}
+          >
+            ✏ Studio
+          </button>
+          <button
+            className={`db-nav-btn${section === "candidatures" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("candidatures")}
+          >
+            🎭 Candidatures RP
+          </button>
+        </div>
       </header>
 
-      <div className="db-body">
+      {section === "candidatures" && <RPDashboard />}
+
+      <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
         <aside className="db-sidebar">
           <p className="db-sidebar-label">Sélectionner une catégorie</p>
@@ -384,12 +413,9 @@ export default function AssociationDashboard() {
                 />
 
                 <label className="db-label">Contenu de l'article</label>
-                <textarea
-                  className="db-textarea"
-                  placeholder="Rédigez votre article ici..."
-                  rows={10}
+                <RichTextEditor
                   value={form.content}
-                  onChange={(e) => set("content", e.target.value)}
+                  onChange={(v) => set("content", v)}
                 />
 
                 <label className="db-label">Image de couverture</label>
@@ -536,6 +562,215 @@ function ColorPicker({ label, value, onChange }) {
   );
 }
 
+/* ── RP Candidature Dashboard ───────────────────────────── */
+
+const STAT_NAMES = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
+
+function RPDashboard() {
+  const [candidatures, setCandidatures] = useState(() => getAllCandidatures());
+  const [search, setSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [expanded, setExpanded] = useState(null);
+
+  useEffect(() => {
+    const refresh = () => setCandidatures(getAllCandidatures());
+    window.addEventListener("woltar:candidatures", refresh);
+    return () => window.removeEventListener("woltar:candidatures", refresh);
+  }, []);
+
+  const filtered = candidatures.filter((c) => {
+    const matchSearch =
+      !search ||
+      (c.pseudo || "").toLowerCase().includes(search.toLowerCase()) ||
+      (c.nomWoltarien || "").toLowerCase().includes(search.toLowerCase());
+    const matchStatus = filterStatus === "all" || c.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
+  const counts = {
+    total: candidatures.length,
+    pending: candidatures.filter((c) => c.status === "pending").length,
+    accepted: candidatures.filter((c) => c.status === "accepted").length,
+    refused: candidatures.filter((c) => c.status === "refused").length,
+  };
+
+  const handleStatus = (id, status) => updateCandidatureStatus(id, status);
+  const handleDelete = (id) => {
+    if (window.confirm("Supprimer cette candidature ?")) deleteCandidature(id);
+  };
+
+  return (
+    <div className="rp-dash">
+      {/* Stats bar */}
+      <div className="rp-stats-bar">
+        <div className="rp-stat rp-stat--total">
+          <span className="rp-stat-num">{counts.total}</span>
+          <span className="rp-stat-label">Total</span>
+        </div>
+        <div className="rp-stat rp-stat--pending">
+          <span className="rp-stat-num">{counts.pending}</span>
+          <span className="rp-stat-label">En attente</span>
+        </div>
+        <div className="rp-stat rp-stat--accepted">
+          <span className="rp-stat-num">{counts.accepted}</span>
+          <span className="rp-stat-label">Acceptées</span>
+        </div>
+        <div className="rp-stat rp-stat--refused">
+          <span className="rp-stat-num">{counts.refused}</span>
+          <span className="rp-stat-label">Refusées</span>
+        </div>
+        {/* Mini bar chart */}
+        <div className="rp-stats-chart">
+          {counts.total > 0 && (
+            <>
+              <div
+                className="rp-bar rp-bar--accepted"
+                style={{ width: `${(counts.accepted / counts.total) * 100}%` }}
+                title={`${counts.accepted} acceptées`}
+              />
+              <div
+                className="rp-bar rp-bar--pending"
+                style={{ width: `${(counts.pending / counts.total) * 100}%` }}
+                title={`${counts.pending} en attente`}
+              />
+              <div
+                className="rp-bar rp-bar--refused"
+                style={{ width: `${(counts.refused / counts.total) * 100}%` }}
+                title={`${counts.refused} refusées`}
+              />
+            </>
+          )}
+          {counts.total === 0 && (
+            <div className="rp-bar rp-bar--empty" style={{ width: "100%" }} />
+          )}
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="rp-controls">
+        <input
+          className="rp-search"
+          type="search"
+          placeholder="Rechercher par pseudo ou nom woltarien…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <div className="rp-filter-btns">
+          {[
+            { id: "all",      label: "Toutes" },
+            { id: "pending",  label: "En attente" },
+            { id: "accepted", label: "Acceptées" },
+            { id: "refused",  label: "Refusées" },
+          ].map((f) => (
+            <button
+              key={f.id}
+              className={`rp-filter-btn rp-filter-btn--${f.id}${filterStatus === f.id ? " rp-filter-btn--active" : ""}`}
+              onClick={() => setFilterStatus(f.id)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <button
+          className="rp-export-btn"
+          onClick={() => exportCandidaturesCSV(filtered)}
+          disabled={filtered.length === 0}
+        >
+          ↓ Exporter CSV ({filtered.length})
+        </button>
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div className="rp-empty">
+          <span className="rp-empty-icon">🎭</span>
+          <p>Aucune candidature trouvée</p>
+        </div>
+      ) : (
+        <div className="rp-list">
+          {filtered.map((c) => {
+            const total = STAT_NAMES.reduce((s, k) => s + (c.stats?.[k] ?? 0), 0);
+            const isOpen = expanded === c.id;
+            return (
+              <div key={c.id} className={`rp-card rp-card--${c.status}`}>
+                <div className="rp-card-header" onClick={() => setExpanded(isOpen ? null : c.id)}>
+                  <div className="rp-card-identity">
+                    <span className="rp-card-pseudo">{c.pseudo || "—"}</span>
+                    {c.nomWoltarien && (
+                      <span className="rp-card-nom">✦ {c.nomWoltarien}</span>
+                    )}
+                  </div>
+                  <div className="rp-card-meta">
+                    <span className="rp-card-pts">{total} pts</span>
+                    <span className={`rp-status-badge rp-status-badge--${c.status}`}>
+                      {c.status === "accepted" ? "Accepté" : c.status === "refused" ? "Refusé" : "En attente"}
+                    </span>
+                    <span className="rp-card-date">
+                      {new Date(c.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+                    </span>
+                    <span className="rp-card-toggle">{isOpen ? "▲" : "▼"}</span>
+                  </div>
+                </div>
+
+                {isOpen && (
+                  <div className="rp-card-body">
+                    <div className="rp-stats-grid">
+                      {STAT_NAMES.map((stat) => {
+                        const val = c.stats?.[stat] ?? 0;
+                        return (
+                          <div key={stat} className="rp-stat-row">
+                            <span className="rp-stat-name">{stat}</span>
+                            <div className="rp-stat-bar-wrap">
+                              <div
+                                className="rp-stat-bar-fill"
+                                style={{ width: `${Math.min(100, (val / 20) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="rp-stat-val">{val}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="rp-card-actions">
+                      <button
+                        className="rp-action-btn rp-action-btn--accept"
+                        onClick={() => handleStatus(c.id, "accepted")}
+                        disabled={c.status === "accepted"}
+                      >
+                        ✓ Accepter
+                      </button>
+                      <button
+                        className="rp-action-btn rp-action-btn--refuse"
+                        onClick={() => handleStatus(c.id, "refused")}
+                        disabled={c.status === "refused"}
+                      >
+                        ✕ Refuser
+                      </button>
+                      <button
+                        className="rp-action-btn rp-action-btn--reset"
+                        onClick={() => handleStatus(c.id, "pending")}
+                        disabled={c.status === "pending"}
+                      >
+                        ↺ Remettre en attente
+                      </button>
+                      <button
+                        className="rp-action-btn rp-action-btn--delete"
+                        onClick={() => handleDelete(c.id)}
+                      >
+                        🗑 Supprimer
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ArticlePreview({ form, category }) {
   const fontStack = getFontStack(form.font);
   return (
@@ -569,9 +804,7 @@ function ArticlePreview({ form, category }) {
         <div className="ap-content" style={{ borderColor: `${form.accentColor}33` }}>
           {form.content ? (
             <p style={{ color: form.textColor }}>
-              {form.content.length > 220
-                ? form.content.slice(0, 220) + "…"
-                : form.content}
+              {(() => { const t = stripHtml(form.content); return t.length > 220 ? t.slice(0, 220) + "…" : t; })()}
             </p>
           ) : (
             <p className="ap-placeholder">Le contenu apparaîtra ici…</p>

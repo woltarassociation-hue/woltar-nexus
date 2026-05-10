@@ -1,10 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Routes, Route, useNavigate, Link } from "react-router-dom";
 import AssociationDashboard from "./components/AssociationDashboard.jsx";
 import SiteNav from "./components/SiteNav.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
+import { saveCandidature } from "./lib/candidatures.js";
 import "./style.css";
 
 const stats = [
@@ -12,36 +13,38 @@ const stats = [
   "Intelligence", "Créativité", "Charisme", "Force",
 ];
 
-const newsSlides = [
+const CAROUSEL_CATS = ["actualites", "evenements", "prevention", "regles"];
+
+const STATIC_SLIDES = [
   {
     category: "Événements 2026",
     subcategory: "Animations RP",
     title: "Event anniversaire 3 ans",
-    text: "Entrez dans l'arène ! À l'approche des 3 ans de Woltar.net, un événement inédit se prépare. Défis RP, animations communautaires et surprises seront au rendez-vous pour célébrer l'univers Woltar.",
+    text: "Entrez dans l'arène ! À l'approche des 3 ans de Woltar.net, un événement inédit se prépare. Défis RP, animations communautaires et surprises seront au rendez-vous.",
     image: "/affiche_entrez_dans_larene.png",
-  },
-  {
-    category: "Événements 2026",
-    subcategory: "Animations RP",
-    title: "Animations RP à venir",
-    text: "Les prochaines animations RP communautaires arrivent bientôt. Préparez vos personnages, alliances et intrigues pour les futurs événements Woltar.",
-    image: "/logo_woltar.png",
+    href: "/evenements",
   },
   {
     category: "Actualités",
     subcategory: "Prévention",
     title: "L'IA n'est pas neutre",
-    text: "Cette affiche de prévention rappelle que l'utilisation de l'intelligence artificielle a un impact réel sur les artistes, leurs œuvres et l'économie créative. Woltar.net encourage une utilisation responsable, transparente et respectueuse des créateurs.",
+    text: "Cette affiche de prévention rappelle l'impact réel de l'intelligence artificielle sur les artistes et l'économie créative. Woltar.net encourage une utilisation responsable.",
     image: "/affiche_prevention_1.png",
+    href: "/prevention",
   },
   {
     category: "Actualités",
     subcategory: "Règles",
     title: "L'IA n'efface pas les droits d'auteur",
-    text: "Les règles de Woltar.net rappellent l'importance du respect des artistes et de leurs créations. Plagiat, imitation abusive et utilisation non autorisée d'œuvres sont interdits au sein de la communauté.",
+    text: "Les règles de Woltar.net rappellent l'importance du respect des artistes. Plagiat et utilisation non autorisée d'œuvres sont interdits au sein de la communauté.",
     image: "/affiche_regles_1.png",
+    href: "/regles",
   },
 ];
+
+function stripHtml(html) {
+  return (html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
 
 const CATEGORY_META = {
   actualites: { label: "Actualités",  icon: "✦" },
@@ -121,9 +124,24 @@ function MainSite() {
   const [pseudoJoueur, setPseudoJoueur] = useState("");
   const [nomWoltarien, setNomWoltarien] = useState("");
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
+  const [rpSubmitted, setRpSubmitted] = useState(false);
 
   const allCategories = Object.keys(CATEGORY_META);
   const recentArticles = usePublishedArticles(allCategories).slice(0, 4);
+
+  // Carousel : articles publiés en priorité, fallback statique
+  const carouselArticles = usePublishedArticles(CAROUSEL_CATS);
+  const newsSlides = useMemo(() => {
+    if (carouselArticles.length === 0) return STATIC_SLIDES;
+    return carouselArticles.slice(0, 6).map((a) => ({
+      category: CATEGORY_META[a.category]?.label || a.category,
+      subcategory: a.author || "",
+      title: a.title,
+      text: a.summary || stripHtml(a.content).slice(0, 180),
+      image: a.coverUrl || "/logo_woltar.png",
+      href: `/${a.category}/${a.slug}`,
+    }));
+  }, [carouselArticles]);
 
   const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
   const remaining = 40 - total;
@@ -266,14 +284,27 @@ function MainSite() {
               Total : {total}/40 — Points restants : {remaining}
             </div>
 
-            <button
-              disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
-              className="form-submit-btn"
-            >
-              Envoyer la candidature
-            </button>
+            {rpSubmitted ? (
+              <div className="form-submitted-msg">
+                ✓ Candidature envoyée avec succès ! L'équipe Woltar vous contactera prochainement.
+              </div>
+            ) : (
+              <button
+                disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
+                className="form-submit-btn"
+                onClick={() => {
+                  saveCandidature({ pseudo: pseudoJoueur, nomWoltarien, stats: values });
+                  setRpSubmitted(true);
+                  setPseudoJoueur("");
+                  setNomWoltarien("");
+                  setValues(Object.fromEntries(stats.map((s) => [s, 5])));
+                }}
+              >
+                Envoyer la candidature
+              </button>
+            )}
 
-            <button onClick={() => setShowFormRp(false)} className="form-close-btn">
+            <button onClick={() => { setShowFormRp(false); setRpSubmitted(false); }} className="form-close-btn">
               Fermer
             </button>
           </div>
@@ -431,9 +462,17 @@ function Carousel({ slides, currentIndex, setCurrentIndex }) {
         {slides.map((slide, idx) => (
           <div
             key={idx}
-            className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}`}
+            className={`carousel-slide${idx === currentIndex ? " carousel-slide--active" : ""}${slide.href ? " carousel-slide--link" : ""}`}
+            onClick={slide.href ? () => navigate(slide.href) : undefined}
+            role={slide.href ? "button" : undefined}
+            tabIndex={slide.href ? 0 : undefined}
           >
-            <img src={slide.image} alt={slide.title} className="carousel-img" />
+            <img
+              src={slide.image}
+              alt={slide.title}
+              className="carousel-img"
+              onError={(e) => { e.target.src = "/logo_woltar.png"; }}
+            />
             <div className="carousel-overlay" />
             <div className="carousel-content">
               <div className="carousel-badges">
@@ -444,6 +483,7 @@ function Carousel({ slides, currentIndex, setCurrentIndex }) {
               </div>
               <h2 className="carousel-title">{slide.title}</h2>
               <p className="carousel-body">{slide.text}</p>
+              {slide.href && <span className="carousel-read-btn">Lire l'article →</span>}
             </div>
           </div>
         ))}
