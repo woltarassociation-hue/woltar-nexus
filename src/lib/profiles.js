@@ -1,6 +1,20 @@
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";
 
+const DEFAULT_PROFILES = [
+  { id: "default-admin",  name: "Administrateur", role: "admin",         username: "association",   password: "woltar2026" },
+  { id: "default-artiste", name: "Artistes",       role: "artiste",       username: "artiste",       password: "woltar2026" },
+  { id: "default-comm",   name: "Communication",   role: "communication", username: "communication", password: "woltar2026" },
+];
+
+export function seedDefaultProfiles() {
+  const stored = JSON.parse(localStorage.getItem(KEY) || "null");
+  if (stored && stored.length > 0) return;
+  const now = new Date().toISOString();
+  const seeded = DEFAULT_PROFILES.map((p) => ({ ...p, createdAt: now, updatedAt: now }));
+  localStorage.setItem(KEY, JSON.stringify(seeded));
+}
+
 export const ROLE_LABELS = {
   admin: "Administrateur",
   artiste: "Artistes",

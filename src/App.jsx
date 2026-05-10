@@ -9,7 +9,9 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { saveCandidature } from "./lib/candidatures.js";
-import { authenticate, setSession } from "./lib/profiles.js";
+import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
+
+seedDefaultProfiles();
 import "./style.css";
 
 const stats = [
