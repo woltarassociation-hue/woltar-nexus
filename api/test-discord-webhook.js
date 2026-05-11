@@ -16,7 +16,8 @@ export default async function handler(req, res) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        content: "🎫 Test webhook Woltar.net : connexion Discord OK"
+        content: "🎫 Test webhook Woltar.net : connexion Discord OK",
+        thread_name: "Test - Connexion Discord OK"
       })
     });
 

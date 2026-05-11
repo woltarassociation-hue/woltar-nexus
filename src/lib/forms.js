@@ -1,6 +1,52 @@
 const FORMS_KEY = "woltar_forms";
 const RESPONSES_KEY = "woltar_form_responses";
 
+// Form field types
+export const FIELD_TYPES = {
+  TEXT: "text",
+  TEXTAREA: "textarea",
+  EMAIL: "email",
+  SELECT: "select",
+  CHECKBOX: "checkbox",
+  RADIO: "radio",
+  DATE: "date",
+  NUMBER: "number",
+  FILE: "file",
+};
+
+// RP Stats disponibles
+export const ALL_RP_STATS = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
+
+// Default form template avec structure avancée
+export const EMPTY_FORM_V2 = {
+  id: null,
+  title: "",
+  description: "",
+  category: "evenements",
+  subcategory: "formulaires",
+  status: "draft",
+  openDate: "",
+  closeDate: "",
+
+  // Champs du formulaire
+  fields: [],
+
+  // Options RP avancées
+  rpOptions: {
+    enableStats: false,
+    statsAmount: 40,
+    statsList: [...ALL_RP_STATS],
+    customRpFields: [], // [ { id, name, type, config } ]
+  },
+
+  // Autres options
+  otherOptions: {
+    duplicateSubmissionAllowed: false,
+    emailNotification: false,
+    maxResponses: null, // null = unlimited
+  },
+};
+
 function emit() {
   window.dispatchEvent(new Event("woltar:forms"));
 }
@@ -82,22 +128,29 @@ export function exportResponsesCsv(formId) {
   const responses = getResponses(formId);
   if (responses.length === 0) return;
 
-  const STAT_NAMES = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
+  const rpOptions = form.rpOptions || {};
+  const statNames = rpOptions.enableStats ? rpOptions.statsList || ALL_RP_STATS : [];
 
   const fieldIds = (form.fields || []).map((f) => f.id);
   const fieldLabels = (form.fields || []).map((f) => f.label);
 
-  const statHeaders = form.statsEnabled ? STAT_NAMES : [];
+  const customRpLabels = (rpOptions.customRpFields || []).map((f) => f.name);
 
-  const headers = ["Pseudo", "Date de soumission", ...statHeaders, ...fieldLabels];
+  const headers = ["Pseudo", "Date de soumission", ...statNames, ...fieldLabels, ...customRpLabels];
 
   const rows = responses.map((r) => {
-    const statCols = form.statsEnabled
-      ? STAT_NAMES.map((s) => String(r.statsValues?.[s] ?? ""))
-      : [];
-    const fieldCols = fieldIds.map((id) => `"${(r.fields?.[id] || "").replace(/"/g, '""')}"`);
+    const statCols = statNames.map((s) => String(r.statsValues?.[s] ?? ""));
+    const fieldCols = fieldIds.map((id) => {
+      const val = r.fields?.[id] || "";
+      // Gérer les arrays (checkbox)
+      return `"${String(Array.isArray(val) ? val.join("; ") : val).replace(/"/g, '""')}"`;
+    });
+    const customRpCols = (rpOptions.customRpFields || []).map((f) => {
+      const val = r.customRpFields?.[f.id] || "";
+      return `"${String(val).replace(/"/g, '""')}"`;
+    });
     const date = new Date(r.submittedAt).toLocaleString("fr-FR");
-    return [`"${(r.pseudo || "").replace(/"/g, '""')}"`, `"${date}"`, ...statCols, ...fieldCols].join(",");
+    return [`"${(r.pseudo || "").replace(/"/g, '""')}"`, `"${date}"`, ...statCols, ...fieldCols, ...customRpCols].join(",");
   });
 
   const csv = [headers.join(","), ...rows].join("\n");

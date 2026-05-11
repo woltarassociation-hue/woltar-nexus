@@ -7,7 +7,7 @@ import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
-import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv } from "../lib/forms";
+import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv, FIELD_TYPES, ALL_RP_STATS, EMPTY_FORM_V2 } from "../lib/forms";
 import { getTickets, saveTicket, deleteTicket, updateTicketStatus, getDiscordConfig, saveDiscordConfig, sendDiscordNotification } from "../lib/tickets";
 import RichTextEditor from "./RichTextEditor";
 
@@ -148,6 +148,14 @@ export default function AssociationDashboard() {
     getAllArticles().filter((a) => a.status === "draft")
   );
   const fileRef = useRef(null);
+
+  // Guard: Vérifier que c'est un admin
+  useEffect(() => {
+    const session = getSession();
+    if (!session || session.role !== "admin") {
+      navigate("/");
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const refresh = () =>
@@ -1675,8 +1683,18 @@ const EMPTY_FORMULAIRE = {
   status: "draft",
   openDate: "",
   closeDate: "",
-  statsEnabled: false,
   fields: [],
+  rpOptions: {
+    enableStats: false,
+    statsAmount: 40,
+    statsList: [...STAT_NAMES_FORM],
+    customRpFields: [],
+  },
+  otherOptions: {
+    duplicateSubmissionAllowed: false,
+    emailNotification: false,
+    maxResponses: null,
+  },
 };
 
 function FormulairesManager() {
@@ -1803,12 +1821,12 @@ function FormulairesManager() {
               <input
                 type="checkbox"
                 id="stats-toggle"
-                checked={!!editForm.statsEnabled}
-                onChange={(e) => setF("statsEnabled", e.target.checked)}
+                checked={!!editForm.rpOptions?.enableStats}
+                onChange={(e) => setF("rpOptions", { ...editForm.rpOptions, enableStats: e.target.checked })}
                 style={{ width: "18px", height: "18px", cursor: "pointer" }}
               />
               <label htmlFor="stats-toggle" className="db-label" style={{ margin: 0, cursor: "pointer" }}>
-                Inclure les statistiques RP (40 pts — {STAT_NAMES_FORM.join(", ")})
+                Inclure les statistiques RP ({editForm.rpOptions?.statsAmount || 40} pts)
               </label>
             </div>
 
@@ -1839,6 +1857,13 @@ function FormulairesManager() {
                   >
                     <option value="text">Texte court</option>
                     <option value="textarea">Texte long</option>
+                    <option value="email">Email</option>
+                    <option value="number">Nombre</option>
+                    <option value="date">Date</option>
+                    <option value="select">Liste déroulante</option>
+                    <option value="radio">Choix unique (radio)</option>
+                    <option value="checkbox">Sélections multiples</option>
+                    <option value="file">Fichier</option>
                   </select>
                   <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "13px", whiteSpace: "nowrap", cursor: "pointer" }}>
                     <input
@@ -1917,7 +1942,7 @@ function FormulairesManager() {
                     <tr>
                       <th>Pseudo</th>
                       <th>Date</th>
-                      {selectedForm?.statsEnabled && STAT_NAMES_FORM.map((s) => <th key={s}>{s}</th>)}
+                      {selectedForm?.rpOptions?.enableStats && (selectedForm?.rpOptions?.statsList || STAT_NAMES_FORM).map((s) => <th key={s}>{s}</th>)}
                       {(selectedForm?.fields || []).map((f) => <th key={f.id}>{f.label}</th>)}
                     </tr>
                   </thead>
@@ -1926,11 +1951,11 @@ function FormulairesManager() {
                       <tr key={r.id}>
                         <td>{r.pseudo}</td>
                         <td>{new Date(r.submittedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</td>
-                        {selectedForm?.statsEnabled && STAT_NAMES_FORM.map((s) => (
+                        {selectedForm?.rpOptions?.enableStats && (selectedForm?.rpOptions?.statsList || STAT_NAMES_FORM).map((s) => (
                           <td key={s}>{r.statsValues?.[s] ?? "—"}</td>
                         ))}
                         {(selectedForm?.fields || []).map((f) => (
-                          <td key={f.id}>{r.fields?.[f.id] || "—"}</td>
+                          <td key={f.id}>{String(Array.isArray(r.fields?.[f.id]) ? (r.fields?.[f.id] || []).join("; ") : (r.fields?.[f.id] || "—"))}</td>
                         ))}
                       </tr>
                     ))}

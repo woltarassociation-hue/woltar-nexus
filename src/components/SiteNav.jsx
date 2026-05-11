@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { getMemberSession } from "../lib/members";
+import { getSession } from "../lib/profiles";
 
 const LEFT_LINKS = [
   { label: "Accueil",    icon: "🏠",  to: "/",           isHash: false },
@@ -36,6 +37,7 @@ function NavLink({ link, active, onClick }) {
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
   const [memberSession, setMemberSession] = useState(() => getMemberSession());
+  const [adminSession, setAdminSession] = useState(() => getSession());
   const { pathname } = useLocation();
   const close = () => setOpen(false);
 
@@ -45,6 +47,16 @@ export default function SiteNav() {
     window.addEventListener("storage", refresh);
     return () => {
       window.removeEventListener("woltar:members", refresh);
+      window.removeEventListener("storage", refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refresh = () => setAdminSession(getSession());
+    window.addEventListener("woltar:profiles", refresh);
+    window.addEventListener("storage", refresh);
+    return () => {
+      window.removeEventListener("woltar:profiles", refresh);
       window.removeEventListener("storage", refresh);
     };
   }, []);
@@ -78,7 +90,7 @@ export default function SiteNav() {
         </a>
       </div>
 
-      {/* Right — 3 liens + compte membre */}
+      {/* Right — 3 liens + admin tab + compte membre */}
       <nav className="nav-right">
         {RIGHT_LINKS.map((link) => (
           <NavLink
@@ -88,6 +100,12 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
+        {adminSession && adminSession.role === "admin" && (
+          <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
+            <span className="nav-symbol">⚙</span>
+            <span>Admin</span>
+          </Link>
+        )}
         {memberSession && (
           <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
             {memberSession.avatar ? (
@@ -121,6 +139,12 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
+          {adminSession && adminSession.role === "admin" && (
+            <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
+              <span className="nav-symbol">⚙</span>
+              <span>Admin</span>
+            </Link>
+          )}
           {memberSession && (
             <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
               <span className="nav-symbol">👤</span>

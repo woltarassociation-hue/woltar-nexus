@@ -25,6 +25,10 @@ export default async function handler(req, res) {
   }
 
   const URGENCY_EMOJI = { Faible: "🟢", Moyenne: "🟡", Haute: "🔴" };
+
+  // Payload Discord avec support des salons Forum
+  const threadName = `[${category || "Général"}] ${subject || "Sans sujet"}`.slice(0, 100);
+
   const embed = {
     title: "🎫 Nouveau ticket Woltar.net",
     color: 0x8b0000,
@@ -39,11 +43,17 @@ export default async function handler(req, res) {
     timestamp: new Date().toISOString(),
   };
 
+  const payload = {
+    content: "🎫 Nouveau ticket Woltar.net",
+    embeds: [embed],
+    thread_name: threadName, // Pour les salons Forum Discord
+  };
+
   try {
     const r = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ embeds: [embed] }),
+      body: JSON.stringify(payload),
     });
     if (!r.ok) {
       const errorText = await r.text();

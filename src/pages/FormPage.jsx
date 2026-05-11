@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, Navigate } from "react-router-dom";
-import { getForm, saveResponse } from "../lib/forms";
+import { getForm, saveResponse, ALL_RP_STATS } from "../lib/forms";
 import SiteNav from "../components/SiteNav";
 
 const STAT_NAMES = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
@@ -34,10 +34,15 @@ export default function FormPage() {
 function FormContent({ form }) {
   const [pseudo, setPseudo] = useState("");
   const [fieldValues, setFieldValues] = useState(() =>
-    Object.fromEntries((form.fields || []).map((f) => [f.id, ""]))
+    Object.fromEntries((form.fields || []).map((f) => [f.id, f.type === "checkbox" ? [] : ""]))
   );
+
+  const rpOptions = form.rpOptions || {};
+  const statsList = rpOptions.statsList || ALL_RP_STATS;
+  const statsAmount = rpOptions.statsAmount || 40;
+
   const [statsValues, setStatsValues] = useState(() =>
-    Object.fromEntries(STAT_NAMES.map((s) => [s, 5]))
+    Object.fromEntries(statsList.map((s) => [s, Math.round(statsAmount / statsList.length)]))
   );
   const [submitted, setSubmitted] = useState(false);
   const [errors, setErrors] = useState({});
@@ -95,8 +100,8 @@ function FormContent({ form }) {
     );
   }
 
-  const total = STAT_NAMES.reduce((s, k) => s + Number(statsValues[k] ?? 0), 0);
-  const remaining = TOTAL_POINTS - total;
+  const total = statsList.reduce((s, k) => s + Number(statsValues[k] ?? 0), 0);
+  const remaining = statsAmount - total;
 
   const handleStat = (stat, val) => {
     const clean = Math.max(0, Math.min(10, Number(val)));
@@ -108,11 +113,13 @@ function FormContent({ form }) {
     const newErrors = {};
     if (!pseudo.trim()) newErrors.pseudo = "Ce champ est requis.";
     (form.fields || []).forEach((f) => {
-      if (f.required && !(fieldValues[f.id] || "").trim()) {
+      const val = fieldValues[f.id];
+      const isEmpty = f.type === "checkbox" ? (Array.isArray(val) ? val.length === 0 : true) : !(val || "").trim();
+      if (f.required && isEmpty) {
         newErrors[f.id] = "Ce champ est requis.";
       }
     });
-    if (form.statsEnabled && remaining !== 0) {
+    if (rpOptions.enableStats && remaining !== 0) {
       newErrors.stats = `Il reste ${remaining > 0 ? remaining : Math.abs(remaining)} point${Math.abs(remaining) > 1 ? "s" : ""} ${remaining > 0 ? "à répartir" : "en trop"}.`;
     }
     if (Object.keys(newErrors).length > 0) {
@@ -122,7 +129,7 @@ function FormContent({ form }) {
     saveResponse({
       formId: form.id,
       pseudo: pseudo.trim(),
-      statsValues: form.statsEnabled ? { ...statsValues } : null,
+      statsValues: rpOptions.enableStats ? { ...statsValues } : null,
       fields: { ...fieldValues },
     });
     setSubmitted(true);
@@ -171,10 +178,11 @@ function FormContent({ form }) {
                 {field.label}
                 {field.required && <span className="form-required"> *</span>}
               </label>
-              {field.type === "textarea" ? (
+
+              {field.type === "textarea" && (
                 <textarea
                   className={`form-textarea-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
-                  placeholder={field.label}
+                  placeholder={field.placeholder || field.label}
                   rows={4}
                   value={fieldValues[field.id] || ""}
                   onChange={(e) => {
@@ -182,11 +190,70 @@ function FormContent({ form }) {
                     setErrors((err) => ({ ...err, [field.id]: undefined }));
                   }}
                 />
-              ) : (
+              )}
+
+              {field.type === "checkbox" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {(field.options || []).map((opt) => (
+                    <label key={opt} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={(fieldValues[field.id] || []).includes(opt)}
+                        onChange={(e) => {
+                          const current = fieldValues[field.id] || [];
+                          const updated = e.target.checked
+                            ? [...current, opt]
+                            : current.filter((v) => v !== opt);
+                          setFieldValues((v) => ({ ...v, [field.id]: updated }));
+                          setErrors((err) => ({ ...err, [field.id]: undefined }));
+                        }}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {field.type === "radio" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {(field.options || []).map((opt) => (
+                    <label key={opt} style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
+                      <input
+                        type="radio"
+                        name={field.id}
+                        value={opt}
+                        checked={fieldValues[field.id] === opt}
+                        onChange={(e) => {
+                          setFieldValues((v) => ({ ...v, [field.id]: e.target.value }));
+                          setErrors((err) => ({ ...err, [field.id]: undefined }));
+                        }}
+                      />
+                      {opt}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {field.type === "select" && (
+                <select
+                  className={`form-input-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
+                  value={fieldValues[field.id] || ""}
+                  onChange={(e) => {
+                    setFieldValues((v) => ({ ...v, [field.id]: e.target.value }));
+                    setErrors((err) => ({ ...err, [field.id]: undefined }));
+                  }}
+                >
+                  <option value="">-- Sélectionner une option --</option>
+                  {(field.options || []).map((opt) => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              )}
+
+              {field.type === "date" && (
                 <input
                   className={`form-input-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
-                  type="text"
-                  placeholder={field.label}
+                  type="date"
                   value={fieldValues[field.id] || ""}
                   onChange={(e) => {
                     setFieldValues((v) => ({ ...v, [field.id]: e.target.value }));
@@ -194,17 +261,57 @@ function FormContent({ form }) {
                   }}
                 />
               )}
+
+              {field.type === "number" && (
+                <input
+                  className={`form-input-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
+                  type="number"
+                  placeholder={field.placeholder || field.label}
+                  value={fieldValues[field.id] || ""}
+                  min={field.min}
+                  max={field.max}
+                  onChange={(e) => {
+                    setFieldValues((v) => ({ ...v, [field.id]: e.target.value }));
+                    setErrors((err) => ({ ...err, [field.id]: undefined }));
+                  }}
+                />
+              )}
+
+              {field.type === "file" && (
+                <input
+                  className={`form-input-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
+                  type="file"
+                  onChange={(e) => {
+                    setFieldValues((v) => ({ ...v, [field.id]: e.target.files[0]?.name || "" }));
+                    setErrors((err) => ({ ...err, [field.id]: undefined }));
+                  }}
+                />
+              )}
+
+              {["text", "email"].includes(field.type) && (
+                <input
+                  className={`form-input-pub${errors[field.id] ? " form-input-pub--error" : ""}`}
+                  type={field.type}
+                  placeholder={field.placeholder || field.label}
+                  value={fieldValues[field.id] || ""}
+                  onChange={(e) => {
+                    setFieldValues((v) => ({ ...v, [field.id]: e.target.value }));
+                    setErrors((err) => ({ ...err, [field.id]: undefined }));
+                  }}
+                />
+              )}
+
               {errors[field.id] && <span className="form-field-error">{errors[field.id]}</span>}
             </div>
           ))}
 
           {/* Stats */}
-          {form.statsEnabled && (
+          {rpOptions.enableStats && (
             <div className="form-stats-section">
-              <h3 className="form-stats-title">Répartition des caractéristiques ({TOTAL_POINTS} pts)</h3>
-              <p className="form-stats-hint">Min : 0 | Max : 10 par statistique | Total obligatoire : {TOTAL_POINTS} points</p>
+              <h3 className="form-stats-title">Répartition des caractéristiques ({statsAmount} pts)</h3>
+              <p className="form-stats-hint">Min : 0 | Max : 10 par statistique | Total obligatoire : {statsAmount} points</p>
               <div className="stats-form-grid">
-                {STAT_NAMES.map((stat) => (
+                {statsList.map((stat) => (
                   <div key={stat} className="stat-card">
                     <div className="stat-card-header">
                       <span className="stat-card-name">{stat}</span>
@@ -221,7 +328,7 @@ function FormContent({ form }) {
                 ))}
               </div>
               <div className={`form-points${remaining === 0 ? " form-points--ok" : " form-points--warn"}`}>
-                Total : {total}/{TOTAL_POINTS} — Points restants : {remaining}
+                Total : {total}/{statsAmount} — Points restants : {remaining}
               </div>
               {errors.stats && <span className="form-field-error">{errors.stats}</span>}
             </div>
