@@ -7,6 +7,7 @@ import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
+import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv } from "../lib/forms";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -282,7 +283,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres" }[section]}
+            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -322,6 +323,12 @@ export default function AssociationDashboard() {
           >
             🧑‍🤝‍🧑 Membres
           </button>
+          <button
+            className={`db-nav-btn${section === "formulaires" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("formulaires")}
+          >
+            📝 Formulaires
+          </button>
         </div>
         <button
           className="db-logout-btn"
@@ -337,6 +344,7 @@ export default function AssociationDashboard() {
       {section === "affiche" && <AfficheSection />}
       {section === "profils" && <ProfilesSection />}
       {section === "membres" && <MembresSection />}
+      {section === "formulaires" && <FormulairesManager />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -1636,6 +1644,362 @@ function MembresSection() {
                   title="Supprimer ce compte"
                 >
                   ×
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Formulaires Manager ─────────────────────────────────── */
+
+const STAT_NAMES_FORM = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
+
+const EMPTY_FORMULAIRE = {
+  id: null,
+  title: "",
+  description: "",
+  category: "evenements",
+  subcategory: "formulaires",
+  status: "draft",
+  openDate: "",
+  closeDate: "",
+  statsEnabled: false,
+  fields: [],
+};
+
+function FormulairesManager() {
+  const [view, setView] = useState("list"); // "list" | "editor" | "responses"
+  const [forms, setForms] = useState(() => getForms());
+  const [editForm, setEditForm] = useState(EMPTY_FORMULAIRE);
+  const [selectedFormId, setSelectedFormId] = useState(null);
+  const [responses, setResponses] = useState([]);
+  const [feedback, setFeedback] = useState(null);
+
+  useEffect(() => {
+    const refresh = () => setForms(getForms());
+    window.addEventListener("woltar:forms", refresh);
+    return () => window.removeEventListener("woltar:forms", refresh);
+  }, []);
+
+  const handleNew = () => {
+    setEditForm({ ...EMPTY_FORMULAIRE });
+    setFeedback(null);
+    setView("editor");
+  };
+
+  const handleEdit = (form) => {
+    setEditForm({ ...EMPTY_FORMULAIRE, ...form });
+    setFeedback(null);
+    setView("editor");
+  };
+
+  const handleDelete = (id) => {
+    if (!window.confirm("Supprimer ce formulaire et toutes ses réponses ?")) return;
+    deleteForm(id);
+  };
+
+  const handleViewResponses = (form) => {
+    setSelectedFormId(form.id);
+    setResponses(getResponses(form.id));
+    setView("responses");
+  };
+
+  const setF = (key, val) => setEditForm((f) => ({ ...f, [key]: val }));
+
+  const addField = () => {
+    setF("fields", [
+      ...(editForm.fields || []),
+      { id: crypto.randomUUID(), label: "", type: "text", required: false },
+    ]);
+  };
+
+  const updateField = (idx, key, val) => {
+    const updated = [...(editForm.fields || [])];
+    updated[idx] = { ...updated[idx], [key]: val };
+    setF("fields", updated);
+  };
+
+  const removeField = (idx) => {
+    const updated = [...(editForm.fields || [])];
+    updated.splice(idx, 1);
+    setF("fields", updated);
+  };
+
+  const handleSaveForm = (status) => {
+    if (!editForm.title.trim()) {
+      setFeedback({ type: "error", message: "Le titre est requis." });
+      return;
+    }
+    saveForm({ ...editForm, status });
+    setFeedback({ type: "success", message: status === "published" ? "✓ Formulaire publié." : "✓ Brouillon enregistré." });
+    setView("list");
+  };
+
+  if (view === "editor") {
+    return (
+      <div className="db-body" style={{ display: "block" }}>
+        <div className="db-editor">
+          <div className="db-editor-inner">
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+              <button className="db-btn db-btn--cancel" onClick={() => setView("list")}>← Retour</button>
+              <h2 className="db-editor-heading" style={{ margin: 0 }}>
+                {editForm.id ? "Modifier le formulaire" : "Nouveau formulaire"}
+              </h2>
+            </div>
+
+            {feedback && (
+              <div className={`db-feedback db-feedback--${feedback.type}`}>
+                <span>{feedback.message}</span>
+              </div>
+            )}
+
+            <label className="db-label">Titre du formulaire</label>
+            <input
+              className="db-input"
+              placeholder="Ex : Inscriptions RP Woltar 2026"
+              value={editForm.title}
+              onChange={(e) => setF("title", e.target.value)}
+            />
+
+            <label className="db-label">Description</label>
+            <textarea
+              className="db-input"
+              placeholder="Description du formulaire…"
+              rows={3}
+              style={{ resize: "vertical", minHeight: "72px" }}
+              value={editForm.description}
+              onChange={(e) => setF("description", e.target.value)}
+            />
+
+            <label className="db-label">Date d'ouverture (optionnel)</label>
+            <input
+              className="db-input"
+              type="datetime-local"
+              value={editForm.openDate || ""}
+              onChange={(e) => setF("openDate", e.target.value ? new Date(e.target.value).toISOString() : "")}
+            />
+
+            <label className="db-label">Date de clôture (optionnel)</label>
+            <input
+              className="db-input"
+              type="datetime-local"
+              value={editForm.closeDate || ""}
+              onChange={(e) => setF("closeDate", e.target.value ? new Date(e.target.value).toISOString() : "")}
+            />
+
+            <div className="db-field" style={{ display: "flex", alignItems: "center", gap: "10px", margin: "16px 0 8px" }}>
+              <input
+                type="checkbox"
+                id="stats-toggle"
+                checked={!!editForm.statsEnabled}
+                onChange={(e) => setF("statsEnabled", e.target.checked)}
+                style={{ width: "18px", height: "18px", cursor: "pointer" }}
+              />
+              <label htmlFor="stats-toggle" className="db-label" style={{ margin: 0, cursor: "pointer" }}>
+                Inclure les statistiques RP (40 pts — {STAT_NAMES_FORM.join(", ")})
+              </label>
+            </div>
+
+            <div style={{ margin: "20px 0 8px" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                <label className="db-label" style={{ margin: 0 }}>Champs personnalisés</label>
+                <button className="db-btn db-btn--draft" style={{ padding: "6px 14px", fontSize: "13px" }} onClick={addField}>
+                  + Ajouter un champ
+                </button>
+              </div>
+              {(editForm.fields || []).length === 0 && (
+                <p style={{ fontSize: "13px", color: "#aaa", fontStyle: "italic" }}>Aucun champ personnalisé.</p>
+              )}
+              {(editForm.fields || []).map((field, idx) => (
+                <div key={field.id} className="db-form-field-row">
+                  <input
+                    className="db-input"
+                    placeholder="Label du champ"
+                    style={{ flex: 2 }}
+                    value={field.label}
+                    onChange={(e) => updateField(idx, "label", e.target.value)}
+                  />
+                  <select
+                    className="db-select"
+                    style={{ flex: 1 }}
+                    value={field.type}
+                    onChange={(e) => updateField(idx, "type", e.target.value)}
+                  >
+                    <option value="text">Texte court</option>
+                    <option value="textarea">Texte long</option>
+                  </select>
+                  <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "13px", whiteSpace: "nowrap", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={!!field.required}
+                      onChange={(e) => updateField(idx, "required", e.target.checked)}
+                    />
+                    Requis
+                  </label>
+                  <button
+                    className="db-btn db-btn--danger"
+                    style={{ padding: "6px 10px", fontSize: "12px" }}
+                    onClick={() => removeField(idx)}
+                    title="Supprimer ce champ"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="db-actions">
+              <button
+                className="db-btn db-btn--draft"
+                onClick={() => handleSaveForm("draft")}
+                disabled={!editForm.title.trim()}
+              >
+                Enregistrer brouillon
+              </button>
+              <button
+                className="db-btn db-btn--publish"
+                onClick={() => handleSaveForm("published")}
+                disabled={!editForm.title.trim()}
+              >
+                Publier →
+              </button>
+              <button className="db-btn db-btn--cancel" onClick={() => setView("list")}>
+                Annuler
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "responses") {
+    const selectedForm = forms.find((f) => f.id === selectedFormId);
+    return (
+      <div className="db-body" style={{ display: "block" }}>
+        <div className="db-editor">
+          <div className="db-editor-inner">
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px", flexWrap: "wrap" }}>
+              <button className="db-btn db-btn--cancel" onClick={() => setView("list")}>← Retour</button>
+              <h2 className="db-editor-heading" style={{ margin: 0, flex: 1 }}>
+                Réponses — {selectedForm?.title || ""}
+              </h2>
+              <button
+                className="db-btn db-btn--draft"
+                onClick={() => exportResponsesCsv(selectedFormId)}
+                disabled={responses.length === 0}
+              >
+                ↓ Exporter CSV ({responses.length})
+              </button>
+            </div>
+
+            {responses.length === 0 ? (
+              <div className="rp-empty">
+                <span className="rp-empty-icon">📋</span>
+                <p>Aucune réponse pour ce formulaire.</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className="db-responses-table">
+                  <thead>
+                    <tr>
+                      <th>Pseudo</th>
+                      <th>Date</th>
+                      {selectedForm?.statsEnabled && STAT_NAMES_FORM.map((s) => <th key={s}>{s}</th>)}
+                      {(selectedForm?.fields || []).map((f) => <th key={f.id}>{f.label}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {responses.map((r) => (
+                      <tr key={r.id}>
+                        <td>{r.pseudo}</td>
+                        <td>{new Date(r.submittedAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</td>
+                        {selectedForm?.statsEnabled && STAT_NAMES_FORM.map((s) => (
+                          <td key={s}>{r.statsValues?.[s] ?? "—"}</td>
+                        ))}
+                        {(selectedForm?.fields || []).map((f) => (
+                          <td key={f.id}>{r.fields?.[f.id] || "—"}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // List view
+  return (
+    <div className="artmgr-wrap">
+      <div className="artmgr-topbar">
+        <div>
+          <h2 className="artmgr-heading">Formulaires RP</h2>
+          <p className="artmgr-sub">
+            {forms.length} formulaire{forms.length !== 1 ? "s" : ""} —{" "}
+            {forms.filter((f) => f.status === "published").length} publié{forms.filter((f) => f.status === "published").length !== 1 ? "s" : ""},{" "}
+            {forms.filter((f) => f.status === "draft").length} brouillon{forms.filter((f) => f.status === "draft").length !== 1 ? "s" : ""}
+          </p>
+        </div>
+        <button className="db-btn db-btn--publish" onClick={handleNew}>
+          + Nouveau formulaire
+        </button>
+      </div>
+
+      {forms.length === 0 ? (
+        <div className="artmgr-empty">
+          <span className="artmgr-empty-icon">📝</span>
+          <p>Aucun formulaire créé. Cliquez sur "+ Nouveau formulaire" pour commencer.</p>
+        </div>
+      ) : (
+        <div className="artmgr-main" style={{ padding: "0 24px 24px" }}>
+          {forms.map((form) => (
+            <div key={form.id} className="artmgr-row">
+              <div className="artmgr-thumb">
+                <span className="artmgr-thumb-icon">📝</span>
+              </div>
+              <div className="artmgr-info">
+                <div className="artmgr-title-line">
+                  <span className="artmgr-title">{form.title || "Sans titre"}</span>
+                </div>
+                <div className="artmgr-meta">
+                  <span className={`artmgr-status artmgr-status--${form.status}`}>
+                    {form.status === "published" ? "● Publié" : "○ Brouillon"}
+                  </span>
+                  {form.statsEnabled && <span className="artmgr-cat-tag">⚔️ Stats RP</span>}
+                  {form.fields?.length > 0 && (
+                    <span className="artmgr-author">{form.fields.length} champ{form.fields.length > 1 ? "s" : ""}</span>
+                  )}
+                  <span className="artmgr-date">
+                    {new Date(form.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                </div>
+              </div>
+              <div className="artmgr-actions">
+                <button
+                  className="artmgr-btn artmgr-btn--edit"
+                  onClick={() => handleViewResponses(form)}
+                >
+                  📋 Réponses ({getResponses(form.id).length})
+                </button>
+                <button
+                  className="artmgr-btn artmgr-btn--edit"
+                  onClick={() => handleEdit(form)}
+                >
+                  ✏ Modifier
+                </button>
+                <button
+                  className="artmgr-btn artmgr-btn--delete"
+                  onClick={() => handleDelete(form.id)}
+                >
+                  🗑
                 </button>
               </div>
             </div>

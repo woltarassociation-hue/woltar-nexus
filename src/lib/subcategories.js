@@ -1,17 +1,20 @@
 export const SUBCATEGORIES = {
   evenements: [
-    { id: "animations-rp", label: "Animations RP", icon: "⚔️" },
-    { id: "concours",      label: "Concours",       icon: "🏆" },
-    { id: "annonces",      label: "Annonces",        icon: "📢" },
+    { id: "animations-rp",  label: "Animations RP",            icon: "⚔️" },
+    { id: "concours",       label: "Concours",                 icon: "🏆" },
+    { id: "formulaires",    label: "Formulaires d'inscription", icon: "📝" },
+    { id: "annonces",       label: "Annonces",                 icon: "📢" },
   ],
   fanarts: [
-    { id: "galerie",  label: "Galerie",  icon: "🖼" },
-    { id: "concours", label: "Concours", icon: "🏆" },
+    { id: "galerie",        label: "Galerie",             icon: "🖼" },
+    { id: "concours-art",   label: "Concours artistiques", icon: "🏆" },
+    { id: "mises-en-avant", label: "Mises en avant",      icon: "⭐" },
   ],
   rp: [
-    { id: "intrigues", label: "Intrigues", icon: "🗡" },
-    { id: "fiches",    label: "Fiches",    icon: "📄" },
-    { id: "archives",  label: "Archives",  icon: "📚" },
+    { id: "intrigues",    label: "Intrigues",       icon: "🗡" },
+    { id: "archives",     label: "Archives",        icon: "📚" },
+    { id: "personnages",  label: "Personnages",     icon: "👤" },
+    { id: "inscriptions", label: "Inscriptions RP", icon: "📋" },
   ],
 };
 

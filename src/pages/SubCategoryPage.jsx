@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import { getAllArticles, getFontStack, estimateReadTime } from "../lib/articles";
 import { getSubcategoryMeta, getSubcategories } from "../lib/subcategories";
+import { getPublishedForms } from "../lib/forms";
 import SiteNav from "../components/SiteNav";
 
 const CATEGORY_META = {
@@ -27,25 +28,33 @@ export default function SubCategoryPage() {
   const catMeta = CATEGORY_META[category];
   const subMeta = getSubcategoryMeta(category, subcategoryId);
 
+  const isFormulaires = category === "evenements" && subcategoryId === "formulaires";
+
   const [articles, setArticles] = useState(() =>
     getAllArticles().filter(
       (a) => a.status === "published" && a.category === category && a.subcategory === subcategoryId
     )
   );
 
+  const [forms, setForms] = useState(() => getPublishedForms());
+
   useEffect(() => {
     if (!subMeta) return;
-    const load = () => setArticles(
+    const loadArticles = () => setArticles(
       getAllArticles().filter(
         (a) => a.status === "published" && a.category === category && a.subcategory === subcategoryId
       )
     );
-    load();
-    window.addEventListener("woltar:articles", load);
-    window.addEventListener("storage", load);
+    const loadForms = () => setForms(getPublishedForms());
+    loadArticles();
+    loadForms();
+    window.addEventListener("woltar:articles", loadArticles);
+    window.addEventListener("storage", loadArticles);
+    window.addEventListener("woltar:forms", loadForms);
     return () => {
-      window.removeEventListener("woltar:articles", load);
-      window.removeEventListener("storage", load);
+      window.removeEventListener("woltar:articles", loadArticles);
+      window.removeEventListener("storage", loadArticles);
+      window.removeEventListener("woltar:forms", loadForms);
     };
   }, [category, subcategoryId, subMeta]);
 
@@ -72,9 +81,15 @@ export default function SubCategoryPage() {
           </div>
           <h1 className="cat-hero-title">{subMeta.label}</h1>
           <p className="cat-hero-desc">{catMeta.label} · {subMeta.label}</p>
-          <span className="cat-hero-count">
-            {articles.length} article{articles.length !== 1 ? "s" : ""} publié{articles.length !== 1 ? "s" : ""}
-          </span>
+          {isFormulaires ? (
+            <span className="cat-hero-count">
+              {forms.length} formulaire{forms.length !== 1 ? "s" : ""} disponible{forms.length !== 1 ? "s" : ""}
+            </span>
+          ) : (
+            <span className="cat-hero-count">
+              {articles.length} article{articles.length !== 1 ? "s" : ""} publié{articles.length !== 1 ? "s" : ""}
+            </span>
+          )}
         </div>
       </div>
 
@@ -95,7 +110,22 @@ export default function SubCategoryPage() {
             </div>
           )}
 
-          {articles.length === 0 ? (
+          {isFormulaires ? (
+            forms.length === 0 ? (
+              <div className="cat-empty">
+                <span className="cat-empty-icon">📝</span>
+                <h2 className="cat-empty-title">Formulaires d'inscription</h2>
+                <p className="cat-empty-text">Aucun formulaire disponible pour le moment.</p>
+                <Link to={`/${category}`} className="cat-empty-btn">← Retour à {catMeta.label}</Link>
+              </div>
+            ) : (
+              <div className="cat-content">
+                <div className="form-list">
+                  {forms.map((f) => <FormItemCard key={f.id} form={f} />)}
+                </div>
+              </div>
+            )
+          ) : articles.length === 0 ? (
             <div className="cat-empty">
               <span className="cat-empty-icon">{subMeta.icon}</span>
               <h2 className="cat-empty-title">{subMeta.label}</h2>
@@ -164,6 +194,35 @@ function SubArticleCard({ article }) {
         </div>
       </div>
     </article>
+  );
+}
+
+function FormItemCard({ form }) {
+  const navigate = useNavigate();
+
+  const formatDate = (iso) => {
+    if (!iso) return null;
+    return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+  };
+
+  return (
+    <div className="form-item-card">
+      <h3 className="form-item-title">{form.title}</h3>
+      {form.description && <p className="form-item-desc">{form.description}</p>}
+      {(form.openDate || form.closeDate) && (
+        <div className="form-item-dates">
+          {form.openDate && <span>Ouverture : {formatDate(form.openDate)}</span>}
+          {form.openDate && form.closeDate && <span> · </span>}
+          {form.closeDate && <span>Clôture : {formatDate(form.closeDate)}</span>}
+        </div>
+      )}
+      <button
+        className="form-item-cta"
+        onClick={() => navigate(`/formulaire/${form.id}`)}
+      >
+        Remplir le formulaire →
+      </button>
+    </div>
   );
 }
 

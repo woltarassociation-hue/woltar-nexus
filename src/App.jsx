@@ -5,21 +5,16 @@ import SiteNav from "./components/SiteNav.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import SubCategoryPage from "./pages/SubCategoryPage.jsx";
+import FormPage from "./pages/FormPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
-import { saveCandidature } from "./lib/candidatures.js";
 import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
 
 seedDefaultProfiles();
 import "./style.css";
-
-const stats = [
-  "Agilité", "Perception", "Chance", "Mémoire",
-  "Intelligence", "Créativité", "Charisme", "Force",
-];
 
 const CAROUSEL_CATS = ["actualites", "evenements", "prevention", "regles"];
 
@@ -102,6 +97,7 @@ export default function App() {
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/compte" element={<AccountPage />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
+      <Route path="/formulaire/:formId" element={<FormPage />} />
       <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
       <Route path="/:category" element={<CategoryPage />} />
     </Routes>
@@ -112,14 +108,7 @@ export default function App() {
 
 function MainSite() {
   const navigate = useNavigate();
-  const [values, setValues] = useState(
-    Object.fromEntries(stats.map((stat) => [stat, 5]))
-  );
-  const [showFormRp, setShowFormRp] = useState(false);
-  const [pseudoJoueur, setPseudoJoueur] = useState("");
-  const [nomWoltarien, setNomWoltarien] = useState("");
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
-  const [rpSubmitted, setRpSubmitted] = useState(false);
   const [assocUser, setAssocUser] = useState("");
   const [assocPass, setAssocPass] = useState("");
   const [assocError, setAssocError] = useState(false);
@@ -152,9 +141,6 @@ function MainSite() {
     }));
   }, [allPublishedArticles]);
 
-  const total = Object.values(values).reduce((a, b) => a + Number(b), 0);
-  const remaining = 40 - total;
-
   useEffect(() => {
     if (newsSlides.length === 0) return;
     const timer = setInterval(() => {
@@ -162,11 +148,6 @@ function MainSite() {
     }, 20000);
     return () => clearInterval(timer);
   }, [newsSlides.length]);
-
-  const handleStat = (stat, value) => {
-    const clean = Math.max(0, Math.min(10, Number(value)));
-    setValues({ ...values, [stat]: clean });
-  };
 
   return (
     <div className="site">
@@ -238,84 +219,11 @@ function MainSite() {
             <Card
               title="Formulaire RP 2026"
               text="Participez à l'événement Woltar 2026."
-              onClick={() => setShowFormRp(!showFormRp)}
+              onClick={() => navigate("/evenements/formulaires")}
               isClickable
             />
           </div>
         </div>
-
-        {showFormRp && (
-          <div className="form-rp-box">
-            <p className="form-rp-disclaimer">
-              Seuls les joueurs possédant un compte et un(e) woltarien(ne) adulte peuvent s'inscrire.
-            </p>
-
-            <label className="form-label form-label--cyan">Pseudo du joueur en jeu</label>
-            <input
-              className="form-input"
-              placeholder="Votre pseudo"
-              value={pseudoJoueur}
-              onChange={(e) => setPseudoJoueur(e.target.value)}
-            />
-
-            <label className="form-label form-label--light">Prénom et NOM du/de la woltarien(ne) participant(e)</label>
-            <input
-              className="form-input"
-              placeholder="Prénom et nom"
-              value={nomWoltarien}
-              onChange={(e) => setNomWoltarien(e.target.value)}
-            />
-
-            <h3 className="form-stats-title">Répartition des caractéristiques (40 pts)</h3>
-            <p className="form-stats-hint">Min : 0 | Max : 10 par statistique | Total obligatoire : 40 points</p>
-
-            <div className="stats-form-grid">
-              {stats.map((stat) => (
-                <div key={stat} className="stat-card">
-                  <div className="stat-card-header">
-                    <span className="stat-card-name">{stat}</span>
-                    <span className="stat-card-value">{values[stat]}/10</span>
-                  </div>
-                  <div className="stat-bar-bg">
-                    <div className="stat-bar-fill" style={{ width: `${(values[stat] / 10) * 100}%` }} />
-                  </div>
-                  <div className="stat-card-controls">
-                    <button className="stat-btn" onClick={() => handleStat(stat, values[stat] - 1)}>−</button>
-                    <button className="stat-btn" onClick={() => handleStat(stat, values[stat] + 1)}>+</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className={`form-points${remaining === 0 ? " form-points--ok" : " form-points--warn"}`}>
-              Total : {total}/40 — Points restants : {remaining}
-            </div>
-
-            {rpSubmitted ? (
-              <div className="form-submitted-msg">
-                ✓ Candidature envoyée avec succès ! L'équipe Woltar vous contactera prochainement.
-              </div>
-            ) : (
-              <button
-                disabled={remaining !== 0 || !pseudoJoueur.trim() || !nomWoltarien.trim()}
-                className="form-submit-btn"
-                onClick={() => {
-                  saveCandidature({ pseudo: pseudoJoueur, nomWoltarien, stats: values });
-                  setRpSubmitted(true);
-                  setPseudoJoueur("");
-                  setNomWoltarien("");
-                  setValues(Object.fromEntries(stats.map((s) => [s, 5])));
-                }}
-              >
-                Envoyer la candidature
-              </button>
-            )}
-
-            <button onClick={() => { setShowFormRp(false); setRpSubmitted(false); }} className="form-close-btn">
-              Fermer
-            </button>
-          </div>
-        )}
 
         <div className="event-box">
           <h3 className="event-box-title">Événements joueurs</h3>
