@@ -37,7 +37,7 @@ export default function ArticlePage() {
   if (loading) {
     return (
       <div className="art-loading">
-        <div className="red-pattern" />
+
         <span>Chargement…</span>
       </div>
     );
@@ -57,7 +57,7 @@ export default function ArticlePage() {
 
   return (
     <div className="art-page" style={{ "--art-accent": article.accentColor || "#1fa8dc" }}>
-      <div className="red-pattern" />
+
       <SiteNav />
 
       {/* Cover image — banner mode */}

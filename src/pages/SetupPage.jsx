@@ -27,7 +27,7 @@ export default function SetupPage() {
 
   return (
     <div className="setup-page">
-      <div className="red-pattern" />
+
 
       {/* Particules décoratives */}
       <div className="setup-glow setup-glow--red" />

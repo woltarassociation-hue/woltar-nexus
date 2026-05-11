@@ -89,7 +89,7 @@ export default function CategoryPage() {
 
   return (
     <div className="cat-page">
-      <div className="red-pattern" />
+
 
       <SiteNav />
 

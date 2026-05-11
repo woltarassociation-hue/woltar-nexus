@@ -17,7 +17,7 @@ export default function AccountPage() {
   if (!session) {
     return (
       <div className="setup-page">
-        <div className="red-pattern" />
+
         <div className="setup-glow setup-glow--red" />
         <div className="setup-glow setup-glow--blue" />
         <div className="setup-card">
@@ -77,7 +77,7 @@ function AccountView({ member, navigate }) {
 
   return (
     <div className="setup-page">
-      <div className="red-pattern" />
+
       <div className="setup-glow setup-glow--red" />
       <div className="setup-glow setup-glow--blue" />
 

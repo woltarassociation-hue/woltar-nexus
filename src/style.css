@@ -10,22 +10,6 @@ html {
 
 body {
   font-family: Verdana, sans-serif;
-  background: #8b0000;
-  color: #1a1020;
-  overflow-x: hidden;
-}
-
-.site {
-  min-height: 100vh;
-  position: relative;
-  overflow-x: hidden;
-}
-
-/* ─── BACKGROUND WOLTAR ─── */
-.red-pattern {
-  position: fixed;
-  inset: 0;
-  z-index: -3;
   background-color: #8b0000;
   background-image: radial-gradient(
     circle at center,
@@ -33,9 +17,12 @@ body {
     transparent 60px
   );
   background-size: 170px 170px;
+  background-attachment: fixed;
+  color: #1a1020;
+  overflow-x: hidden;
 }
 
-.site::before {
+body::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -49,6 +36,14 @@ body {
   animation: sparkleMove 22s linear infinite;
   opacity: 0.22;
 }
+
+.site {
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* ─── BACKGROUND WOLTAR — géré sur body, universel ─── */
 
 /* ─── NAVBAR ─── */
 .navbar {

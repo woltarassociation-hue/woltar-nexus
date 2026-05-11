@@ -170,7 +170,7 @@ function MainSite() {
 
   return (
     <div className="site">
-      <div className="red-pattern" />
+
 
       <SiteNav />
 

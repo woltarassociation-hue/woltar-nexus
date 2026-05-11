@@ -55,7 +55,7 @@ export default function SubCategoryPage() {
 
   return (
     <div className="cat-page">
-      <div className="red-pattern" />
+
       <SiteNav />
 
       <div className="cat-hero">

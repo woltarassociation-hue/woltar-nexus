@@ -39,7 +39,7 @@ export default function RegisterPage() {
 
   return (
     <div className="setup-page">
-      <div className="red-pattern" />
+
       <div className="setup-glow setup-glow--red" />
       <div className="setup-glow setup-glow--blue" />
 
