@@ -213,53 +213,81 @@ body {
 /* ─── HERO ─── */
 .hero {
   min-height: 100vh;
-  padding: 160px 6% 80px;
+  padding: 150px 4% 72px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 48px;
-}
-
-/* ── Bloc Bienvenue animé ── */
-.hero-welcome {
-  text-align: center;
-  max-width: 720px;
-  width: 100%;
-  animation: hero-fade-up 1s 0.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+  gap: 40px;
 }
 
 @keyframes hero-fade-up {
-  from { opacity: 0; transform: translateY(30px); }
+  from { opacity: 0; transform: translateY(32px); }
   to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-levitate {
+  0%, 100% {
+    transform: translateY(0);
+    box-shadow: 0 18px 50px rgba(100,0,0,0.16), 0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+  50% {
+    transform: translateY(-10px);
+    box-shadow: 0 32px 70px rgba(100,0,0,0.22), 0 1px 0 rgba(255,255,255,0.8) inset;
+  }
+}
+
+/* ── Carte Bienvenue — style section + lévitation ── */
+.hero-welcome {
+  position: relative;
+  width: min(1080px, 92%);
+  background: rgba(255, 252, 255, 0.93);
+  border-radius: 28px;
+  padding: 44px 52px;
+  border: 1px solid rgba(139,0,0,0.1);
+  text-align: center;
+  overflow: hidden;
+  animation:
+    hero-fade-up 1s 0.15s cubic-bezier(0.22, 1, 0.36, 1) both,
+    hero-levitate 5s 1.3s ease-in-out infinite;
+}
+
+.hero-welcome::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #8b0000, #1fa8dc);
+  pointer-events: none;
 }
 
 .hero-welcome-title {
   font-family: 'Playfair Display', serif;
-  font-size: clamp(36px, 5.5vw, 64px);
+  font-size: clamp(28px, 3.8vw, 44px);
   font-weight: 700;
-  color: #fff;
+  color: #9a0000;
   letter-spacing: -0.01em;
-  line-height: 1.12;
-  margin-bottom: 18px;
-  text-shadow:
-    0 0 60px rgba(139,0,0,0.55),
-    0 0 120px rgba(31,168,220,0.2),
-    0 2px 24px rgba(0,0,0,0.7);
-  animation: hero-fade-up 1.1s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both,
-             hero-title-glow 3.5s 1.4s ease-in-out infinite alternate;
+  line-height: 1.15;
+  margin-bottom: 14px;
+  text-shadow: 0 1px 6px rgba(139,0,0,0.15);
+  animation: hero-fade-up 1s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-@keyframes hero-title-glow {
-  from { text-shadow: 0 0 60px rgba(139,0,0,0.55), 0 0 120px rgba(31,168,220,0.2), 0 2px 24px rgba(0,0,0,0.7); }
-  to   { text-shadow: 0 0 80px rgba(139,0,0,0.75), 0 0 160px rgba(31,168,220,0.35), 0 2px 24px rgba(0,0,0,0.7); }
+.hero-welcome-title::after {
+  content: "";
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(139,0,0,0.45), rgba(31,168,220,0.35), transparent);
+  margin: 10px auto 0;
+  border-radius: 2px;
+  width: 60%;
 }
 
 .hero-welcome-sub {
-  font-size: 16px;
-  color: rgba(255,255,255,0.75);
+  font-size: 15px;
+  color: #2a2535;
   line-height: 1.75;
-  margin-bottom: 30px;
-  animation: hero-fade-up 1.1s 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+  margin-bottom: 24px;
+  animation: hero-fade-up 1s 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .hero-welcome-cats {
@@ -270,9 +298,6 @@ body {
 }
 
 .hero-welcome-cats .hero-cat-pill {
-  background: rgba(255,255,255,0.1);
-  border-color: rgba(255,255,255,0.22);
-  color: rgba(255,255,255,0.88);
   animation: hero-fade-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 .hero-welcome-cats .hero-cat-pill:nth-child(1) { animation-delay: 0.55s; }
@@ -280,26 +305,20 @@ body {
 .hero-welcome-cats .hero-cat-pill:nth-child(3) { animation-delay: 0.85s; }
 .hero-welcome-cats .hero-cat-pill:nth-child(4) { animation-delay: 1.00s; }
 
-.hero-welcome-cats .hero-cat-pill:hover {
-  background: linear-gradient(135deg, #8b0000, #1fa8dc);
-  border-color: transparent;
-  color: #fff;
-}
-
+/* ── Carrousel — même largeur que les sections ── */
 .hero-content {
-  width: 100%;
-  max-width: 920px;
+  width: min(1080px, 92%);
   overflow: hidden;
   background: #0a0a14;
   border-radius: 28px;
-  animation: hero-fade-up 1.1s 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: hero-fade-up 1s 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ─── SECTIONS ─── */
 .section {
   width: min(1080px, 92%);
-  margin: 0 auto 56px;
-  padding: 52px 36px;
+  margin: 0 auto 48px;
+  padding: 52px 48px;
   background: rgba(255, 252, 255, 0.93);
   border-radius: 28px;
   box-shadow: 0 18px 50px rgba(100,0,0,0.16), 0 1px 0 rgba(255,255,255,0.8) inset;
@@ -998,8 +1017,12 @@ footer:not(.site-footer) p {
   }
 
   .hero {
-    padding: 120px 5% 60px;
-    gap: 36px;
+    padding: 110px 4% 56px;
+    gap: 28px;
+  }
+
+  .hero-welcome {
+    padding: 32px 28px;
   }
 
   .carousel-track {
@@ -1061,8 +1084,12 @@ footer:not(.site-footer) p {
 
 @media (max-width: 600px) {
   .hero {
-    padding: 110px 4% 48px;
-    gap: 28px;
+    padding: 100px 4% 44px;
+    gap: 24px;
+  }
+
+  .hero-welcome {
+    padding: 28px 20px;
   }
 
   .carousel-track {
