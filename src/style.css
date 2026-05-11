@@ -213,7 +213,7 @@ body {
 /* ─── HERO ─── */
 .hero {
   min-height: 100vh;
-  padding: 150px 4% 72px;
+  padding: 170px 4% 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -2340,7 +2340,7 @@ footer:not(.site-footer) p {
    HOME — CATEGORIES EN VEDETTE
 ───────────────────────────────────────────────────────── */
 .home-categories-section {
-  margin-top: 32px;
+  margin-top: 0;
 }
 
 .home-cat-grid {
