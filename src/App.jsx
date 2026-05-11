@@ -9,6 +9,7 @@ import FormPage from "./pages/FormPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
+import TicketsPage from "./pages/TicketsPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
 import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
@@ -97,6 +98,7 @@ export default function App() {
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/compte" element={<AccountPage />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
+      <Route path="/tickets" element={<TicketsPage />} />
       <Route path="/formulaire/:formId" element={<FormPage />} />
       <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
       <Route path="/:category" element={<CategoryPage />} />

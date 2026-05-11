@@ -8,6 +8,7 @@ import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from ".
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
 import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv } from "../lib/forms";
+import { getTickets, saveTicket, deleteTicket, updateTicketStatus, getDiscordConfig, saveDiscordConfig, sendDiscordNotification } from "../lib/tickets";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -283,7 +284,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP" }[section]}
+            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP", tickets: "Tickets" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -329,6 +330,12 @@ export default function AssociationDashboard() {
           >
             📝 Formulaires
           </button>
+          <button
+            className={`db-nav-btn${section === "tickets" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("tickets")}
+          >
+            🎫 Tickets
+          </button>
         </div>
         <button
           className="db-logout-btn"
@@ -345,6 +352,7 @@ export default function AssociationDashboard() {
       {section === "profils" && <ProfilesSection />}
       {section === "membres" && <MembresSection />}
       {section === "formulaires" && <FormulairesManager />}
+      {section === "tickets" && <TicketsManager />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -2004,6 +2012,265 @@ function FormulairesManager() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Tickets Manager ─────────────────────────────────────── */
+
+const TICKET_CATEGORIES = ["Bug site", "Problème de compte", "RP / Event", "Signalement", "Question générale", "Autre"];
+const TICKET_URGENCIES  = ["Faible", "Moyenne", "Haute"];
+const TICKET_STATUSES   = ["Ouvert", "En cours", "Résolu", "Fermé"];
+
+const URGENCY_COLOR = { Faible: "#22a06b", Moyenne: "#e67e22", Haute: "#c0392b" };
+const URGENCY_DOT   = { Faible: "🟢", Moyenne: "🟡", Haute: "🔴" };
+const STATUS_COLOR  = { Ouvert: "#1fa8dc", "En cours": "#e67e22", Résolu: "#22a06b", Fermé: "#999" };
+
+function TicketsManager() {
+  const [tickets, setTickets]       = useState(() => getTickets());
+  const [filterCat, setFilterCat]   = useState("all");
+  const [filterUrg, setFilterUrg]   = useState("all");
+  const [filterStat, setFilterStat] = useState("all");
+  const [search, setSearch]         = useState("");
+
+  useEffect(() => {
+    const refresh = () => setTickets(getTickets());
+    window.addEventListener("woltar:tickets", refresh);
+    return () => window.removeEventListener("woltar:tickets", refresh);
+  }, []);
+
+  const filtered = tickets.filter((t) => {
+    if (filterCat  !== "all" && t.category !== filterCat)  return false;
+    if (filterUrg  !== "all" && t.urgency  !== filterUrg)  return false;
+    if (filterStat !== "all" && t.status   !== filterStat) return false;
+    if (search) {
+      const q = search.toLowerCase();
+      if (
+        !(t.pseudo  || "").toLowerCase().includes(q) &&
+        !(t.subject || "").toLowerCase().includes(q) &&
+        !(t.message || "").toLowerCase().includes(q)
+      ) return false;
+    }
+    return true;
+  });
+
+  const handleStatusChange = (id, status) => updateTicketStatus(id, status);
+  const handleDelete = (id) => {
+    if (window.confirm("Supprimer ce ticket ?")) deleteTicket(id);
+  };
+
+  return (
+    <div className="artmgr-wrap">
+      <div className="artmgr-topbar">
+        <div>
+          <h2 className="artmgr-heading">Tickets</h2>
+          <p className="artmgr-sub">
+            {tickets.length} ticket{tickets.length !== 1 ? "s" : ""} au total
+          </p>
+        </div>
+        <input
+          className="artmgr-search"
+          type="search"
+          placeholder="Rechercher dans les tickets…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+      </div>
+
+      <div className="tkmgr-filters">
+        <select
+          className="db-select"
+          value={filterCat}
+          onChange={(e) => setFilterCat(e.target.value)}
+        >
+          <option value="all">Toutes catégories</option>
+          {TICKET_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+
+        <select
+          className="db-select"
+          value={filterUrg}
+          onChange={(e) => setFilterUrg(e.target.value)}
+        >
+          <option value="all">Toutes urgences</option>
+          {TICKET_URGENCIES.map((u) => (
+            <option key={u} value={u}>{URGENCY_DOT[u]} {u}</option>
+          ))}
+        </select>
+
+        <select
+          className="db-select"
+          value={filterStat}
+          onChange={(e) => setFilterStat(e.target.value)}
+        >
+          <option value="all">Tous statuts</option>
+          {TICKET_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="artmgr-empty">
+          <span className="artmgr-empty-icon">🎫</span>
+          <p>{tickets.length === 0 ? "Aucun ticket pour l'instant." : "Aucun ticket ne correspond aux filtres."}</p>
+        </div>
+      ) : (
+        <div className="tkmgr-list">
+          {filtered.map((t) => (
+            <div key={t.id} className="tkmgr-card">
+              <div className="tkmgr-card-top">
+                <div className="tkmgr-card-left">
+                  <span
+                    className="tkmgr-urgency-badge"
+                    style={{ background: `${URGENCY_COLOR[t.urgency] || "#999"}18`, color: URGENCY_COLOR[t.urgency] || "#999" }}
+                  >
+                    {URGENCY_DOT[t.urgency]} {t.urgency}
+                  </span>
+                  <span className="tkmgr-id">WLT-{t.id}</span>
+                  <span className="tkmgr-pseudo">{t.pseudo}</span>
+                  <span className="tkmgr-cat">{t.category}</span>
+                </div>
+                <div className="tkmgr-card-right">
+                  <span className="tkmgr-date">
+                    {new Date(t.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                  </span>
+                  <select
+                    className="tkmgr-status-select"
+                    value={t.status}
+                    style={{ borderColor: STATUS_COLOR[t.status] || "#ccc", color: STATUS_COLOR[t.status] || "#555" }}
+                    onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                  >
+                    {TICKET_STATUSES.map((s) => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                  </select>
+                  <button
+                    className="artmgr-btn artmgr-btn--delete"
+                    onClick={() => handleDelete(t.id)}
+                    title="Supprimer ce ticket"
+                  >
+                    🗑
+                  </button>
+                </div>
+              </div>
+              <div className="tkmgr-subject">{t.subject}</div>
+              <div className="tkmgr-message">{(t.message || "").slice(0, 200)}{(t.message || "").length > 200 ? "…" : ""}</div>
+              {t.imageUrl && (
+                <img src={t.imageUrl} alt="Pièce jointe" className="tkmgr-img" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <DiscordConfigSection />
+    </div>
+  );
+}
+
+function DiscordConfigSection() {
+  const [config, setConfig]         = useState(() => getDiscordConfig());
+  const [showUrl, setShowUrl]       = useState(false);
+  const [testResult, setTestResult] = useState(null);
+  const [saving, setSaving]         = useState(false);
+  const [testing, setTesting]       = useState(false);
+
+  const handleSave = () => {
+    setSaving(true);
+    saveDiscordConfig(config);
+    setTimeout(() => setSaving(false), 800);
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    const testTicket = {
+      id: "test0001",
+      pseudo: "Admin Woltar",
+      category: "Question générale",
+      urgency: "Faible",
+      subject: "Test de notification Discord",
+      message: "Ceci est un test d'envoi depuis le tableau de bord Woltar.",
+      status: "Ouvert",
+      createdAt: new Date().toISOString(),
+    };
+    const result = await sendDiscordNotification(testTicket);
+    setTestResult(result);
+    setTesting(false);
+  };
+
+  return (
+    <div className="discord-config-section">
+      <h3 className="discord-config-title">Configuration Discord</h3>
+      <p className="discord-config-note">
+        Note : L'URL configurée ici est stockée localement. Pour plus de sécurité en production,
+        utilisez la variable d'environnement{" "}
+        <code>DISCORD_TICKET_WEBHOOK_URL</code> côté serveur.
+      </p>
+
+      <div className="discord-config-row">
+        <label className="db-label" style={{ margin: 0, whiteSpace: "nowrap" }}>Notifications activées</label>
+        <label className="discord-toggle">
+          <input
+            type="checkbox"
+            checked={config.enabled !== false}
+            onChange={(e) => setConfig((c) => ({ ...c, enabled: e.target.checked }))}
+          />
+          <span className="discord-toggle-slider" />
+        </label>
+        <span style={{ fontSize: "13px", color: config.enabled !== false ? "#22a06b" : "#999" }}>
+          {config.enabled !== false ? "Activé" : "Désactivé"}
+        </span>
+      </div>
+
+      <div className="discord-config-url-wrap">
+        <label className="db-label">URL du webhook Discord</label>
+        <div className="discord-url-input-row">
+          <input
+            className="db-input"
+            type={showUrl ? "text" : "password"}
+            placeholder="https://discord.com/api/webhooks/…"
+            value={config.webhookUrl || ""}
+            onChange={(e) => setConfig((c) => ({ ...c, webhookUrl: e.target.value }))}
+            style={{ flex: 1 }}
+          />
+          <button
+            type="button"
+            className="prof-pass-toggle"
+            onClick={() => setShowUrl((v) => !v)}
+            title={showUrl ? "Masquer" : "Afficher"}
+          >
+            {showUrl ? "🙈" : "👁"}
+          </button>
+        </div>
+      </div>
+
+      <div className="discord-config-actions">
+        <button
+          className="db-btn db-btn--publish"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? "✓ Enregistré" : "Enregistrer"}
+        </button>
+        <button
+          className="db-btn db-btn--draft"
+          onClick={handleTest}
+          disabled={testing}
+        >
+          {testing ? "Envoi…" : "Tester →"}
+        </button>
+      </div>
+
+      {testResult && (
+        <div
+          className={`db-feedback db-feedback--${testResult.ok ? "success" : "warning"}`}
+          style={{ marginTop: "12px" }}
+        >
+          {testResult.ok
+            ? "✓ Notification de test envoyée avec succès !"
+            : `✕ Échec : ${testResult.error || (testResult.skipped ? "notifications désactivées ou webhook non configuré" : "erreur inconnue")}`}
         </div>
       )}
     </div>
