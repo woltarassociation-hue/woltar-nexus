@@ -124,9 +124,6 @@ function MainSite() {
   const [assocPass, setAssocPass] = useState("");
   const [assocError, setAssocError] = useState(false);
 
-  const allCategories = Object.keys(CATEGORY_META);
-  const recentArticles = usePublishedArticles(allCategories).slice(0, 4);
-
   const [affiche, setAffiche] = useState(() => {
     try { return JSON.parse(localStorage.getItem("woltar_affiche") || "null"); } catch { return null; }
   });
@@ -256,17 +253,8 @@ function MainSite() {
         </div>
       </section>
 
-      {/* ── Articles récents ── */}
-      {recentArticles.length > 0 && (
-        <section className="section recent-articles-section">
-          <h2>Derniers articles</h2>
-          <div className="recent-grid">
-            {recentArticles.map((article) => (
-              <RecentArticleCard key={article.id} article={article} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Derniers articles (strip horizontal) ── */}
+      <LatestArticlesStrip articles={allPublishedArticles} />
 
       {/* ── Histoire ── */}
       <Section id="histoire" title="Woltar et son histoire">
@@ -445,49 +433,75 @@ function MainSite() {
   );
 }
 
-/* ── Recent article card (home page) ─────────────────────── */
+/* ── Strip horizontal — derniers articles publiés ────────── */
 
-function RecentArticleCard({ article }) {
+function LatestArticlesStrip({ articles }) {
+  const latest = useMemo(() => {
+    return [...articles]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 10);
+  }, [articles]);
+
+  return (
+    <section className="section latest-strip-section">
+      <div className="latest-strip-header">
+        <h2>Derniers articles publiés</h2>
+        <Link to="/actualites" className="latest-strip-all">Voir tout →</Link>
+      </div>
+
+      {latest.length === 0 ? (
+        <div className="latest-strip-empty">
+          <span>✦</span>
+          <p>Les articles apparaîtront ici une fois publiés.</p>
+        </div>
+      ) : (
+        <div className="latest-strip-track">
+          {latest.map((article) => (
+            <LatestMiniCard key={article.id} article={article} />
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LatestMiniCard({ article }) {
   const navigate = useNavigate();
   const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
   const fontStack = getFontStack(article.font);
-  const readTime = estimateReadTime(article.content);
 
   return (
     <article
-      className="recent-card"
+      className="latest-card"
       onClick={() => navigate(`/${article.category}/${article.slug}`)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && navigate(`/${article.category}/${article.slug}`)}
     >
-      {article.coverUrl && (
-        <div className="recent-card-cover">
+      <div className="latest-card-thumb">
+        {article.coverUrl ? (
           <img src={article.coverUrl} alt={article.title} />
-        </div>
-      )}
-      <div className="recent-card-body">
-        <span className="recent-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
+        ) : (
+          <div className="latest-card-thumb-fallback">{meta.icon}</div>
+        )}
+      </div>
+      <div className="latest-card-body">
+        <span className="latest-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
           {meta.icon} {meta.label}
         </span>
         <h3
-          className="recent-card-title"
-          style={{ fontFamily: fontStack, color: article.titleColor }}
+          className="latest-card-title"
+          style={{ fontFamily: fontStack, color: article.titleColor || "#1a1020" }}
         >
           {article.title}
         </h3>
-        {article.summary && (
-          <p className="recent-card-summary" style={{ color: article.textColor }}>
-            {article.summary}
-          </p>
-        )}
-        <div className="recent-card-footer">
-          <span className="recent-card-date">
+        <div className="latest-card-footer">
+          <span className="latest-card-date">
             {new Date(article.createdAt).toLocaleDateString("fr-FR", {
-              day: "numeric", month: "long", year: "numeric",
+              day: "numeric", month: "short",
             })}
           </span>
-          <span className="recent-card-read">{readTime} min</span>
+          <span className="latest-card-read">Lire →</span>
         </div>
       </div>
     </article>
@@ -540,6 +554,7 @@ function Card({ title, text, onClick, isClickable }) {
 }
 
 function Carousel({ slides, currentIndex, setCurrentIndex }) {
+  const navigate = useNavigate();
   if (!slides || slides.length === 0) return null;
   const prev = () => setCurrentIndex((i) => (i - 1 + slides.length) % slides.length);
   const next = () => setCurrentIndex((i) => (i + 1) % slides.length);
