@@ -11,6 +11,8 @@ export default async function handler(req, res) {
   const webhookUrl =
     process.env.DISCORD_TICKET_WEBHOOK_URL || req.body?.adminWebhookUrl || null;
 
+  console.log("[Discord] Webhook URL présent:", !!webhookUrl, "Env:", !!process.env.DISCORD_TICKET_WEBHOOK_URL);
+
   if (!webhookUrl || !webhookUrl.startsWith("https://discord.com/api/webhooks/")) {
     return res.status(200).json({ ok: false, error: "Webhook non configuré" });
   }
@@ -43,9 +45,15 @@ export default async function handler(req, res) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ embeds: [embed] }),
     });
-    if (!r.ok) return res.status(200).json({ ok: false, error: "Discord error" });
+    if (!r.ok) {
+      const errorText = await r.text();
+      console.error("[Discord] Webhook error:", r.status, errorText);
+      return res.status(200).json({ ok: false, error: `Discord error (${r.status}): ${errorText}` });
+    }
+    console.log("[Discord] Message envoyé avec succès");
     return res.status(200).json({ ok: true });
   } catch (e) {
-    return res.status(200).json({ ok: false, error: e.message });
+    console.error("[Discord] Erreur fetch:", e.message);
+    return res.status(200).json({ ok: false, error: `Erreur: ${e.message}` });
   }
 }
