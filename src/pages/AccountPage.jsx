@@ -6,8 +6,9 @@ import {
   upsertMember,
   setMemberSession,
   clearMemberSession,
+  MEMBER_ROLE_LABELS,
 } from "../lib/members";
-import { MEMBER_ROLE_LABELS } from "../lib/members";
+import { compressImage } from "../lib/imageUtils";
 
 export default function AccountPage() {
   const navigate = useNavigate();
@@ -43,13 +44,16 @@ function AccountView({ member, navigate }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
-  const handleAvatarChange = (e) => {
+  const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
     setAvatarFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setAvatar(ev.target.result);
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 400, maxHeight: 400, quality: 0.88 });
+      setAvatar(compressed);
+    } catch {
+      setError("Impossible de charger l'image.");
+    }
   };
 
   const handleSave = () => {

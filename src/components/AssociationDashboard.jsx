@@ -5,6 +5,7 @@ import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
+import { compressImage } from "../lib/imageUtils";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -1079,14 +1080,6 @@ function AfficheSection() {
     handleFile(e.dataTransfer.files[0]);
   };
 
-  const readFileAsDataURL = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = () => reject(new Error("Impossible de lire le fichier image."));
-      reader.readAsDataURL(file);
-    });
-
   const handleSave = async () => {
     setSaving(true);
     setSaveError(null);
@@ -1094,7 +1087,7 @@ function AfficheSection() {
     try {
       let imageUrl = form.imageUrl;
       if (form.imageFile) {
-        imageUrl = await readFileAsDataURL(form.imageFile);
+        imageUrl = await compressImage(form.imageFile, { maxWidth: 1200, maxHeight: 1600, quality: 0.82 });
       }
       const record = {
         title: form.title,

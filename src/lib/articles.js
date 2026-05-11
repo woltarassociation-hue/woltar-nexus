@@ -35,7 +35,11 @@ export function upsertArticle(data) {
   const idx = all.findIndex((a) => a.id === id);
   if (idx >= 0) all[idx] = record;
   else all.unshift(record);
-  localStorage.setItem(KEY, JSON.stringify(all));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(all));
+  } catch (e) {
+    throw new Error("Stockage local plein. Supprime des anciens articles ou réduis la taille des images.");
+  }
   dispatch();
   return record;
 }

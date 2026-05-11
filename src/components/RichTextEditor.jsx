@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from "react";
+import { compressImage } from "../lib/imageUtils";
 
 /* ── Groupes de polices ─────────────────────────────────────── */
 export const RTE_FONT_GROUPS = [
@@ -90,11 +91,14 @@ function ImagePanel({ onInsert, onClose }) {
   const [preview, setPreview] = useState(null);
   const fileRef = useRef(null);
 
-  const handleFile = (file) => {
+  const handleFile = async (file) => {
     if (!file || !file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onloadend = () => setPreview(reader.result);
-    reader.readAsDataURL(file);
+    try {
+      const compressed = await compressImage(file, { maxWidth: 1200, maxHeight: 1200, quality: 0.82 });
+      setPreview(compressed);
+    } catch {
+      setPreview(null);
+    }
   };
 
   const handleUrl = (val) => {

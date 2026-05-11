@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { upsertArticle, deleteArticle } from "./articles.js";
+import { compressImage } from "./imageUtils.js";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -77,10 +78,5 @@ export async function uploadCoverImage(file) {
 }
 
 function readAsDataURL(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Impossible de lire le fichier image."));
-    reader.readAsDataURL(file);
-  });
+  return compressImage(file);
 }
