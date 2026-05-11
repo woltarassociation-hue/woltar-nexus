@@ -6,13 +6,12 @@ const LEFT_LINKS = [
   { label: "Accueil",    icon: "🏠",  to: "/",           isHash: false },
   { label: "Histoire",   icon: "📖",  to: "/#histoire",  isHash: true },
   { label: "Actualités", icon: "✦",   to: "/actualites", isHash: false },
-  { label: "Événements", icon: "🎪",  to: "/evenements", isHash: false },
 ];
 
 const RIGHT_LINKS = [
+  { label: "Événements", icon: "🎪",  to: "/evenements", isHash: false },
   { label: "Fan-arts",   icon: "🎨",  to: "/fanarts",    isHash: false },
   { label: "RP",         icon: "🎭",  to: "/rp",         isHash: false },
-  { label: "Équipe",     icon: "👥",  to: "/#equipes",   isHash: true },
 ];
 
 function NavLink({ link, active, onClick }) {
@@ -51,7 +50,7 @@ export default function SiteNav() {
 
   return (
     <header className="navbar">
-      {/* Left links — desktop */}
+      {/* Left — 3 liens */}
       <nav className="nav-left">
         {LEFT_LINKS.map((link) => (
           <NavLink
@@ -78,7 +77,7 @@ export default function SiteNav() {
         </a>
       </div>
 
-      {/* Right links — desktop */}
+      {/* Right — 3 liens + compte membre */}
       <nav className="nav-right">
         {RIGHT_LINKS.map((link) => (
           <NavLink

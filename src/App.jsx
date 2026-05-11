@@ -194,26 +194,27 @@ function MainSite() {
 
       {/* ── Hero ── */}
       <section id="accueil" className="hero">
-        <div className="hero-content">
-          <Carousel
-            slides={newsSlides}
-            currentIndex={currentNewsIndex}
-            setCurrentIndex={setCurrentNewsIndex}
-          />
-        </div>
-        <div className="hero-card">
-          <h2>Bienvenue sur Woltar</h2>
-          <p>
+        <div className="hero-welcome">
+          <h1 className="hero-welcome-title">Bienvenue sur Woltar</h1>
+          <p className="hero-welcome-sub">
             Un système planétaire perdu dans l'espace, habité par les
             Woltariens, Woltariennes et Woltarions.
           </p>
-          <div className="hero-card-cats">
+          <div className="hero-welcome-cats">
             {HOME_CATEGORIES.map((c) => (
               <a key={c.href} href={c.href} className="hero-cat-pill">
                 {c.icon} {c.label}
               </a>
             ))}
           </div>
+        </div>
+
+        <div className="hero-content">
+          <Carousel
+            slides={newsSlides}
+            currentIndex={currentNewsIndex}
+            setCurrentIndex={setCurrentNewsIndex}
+          />
         </div>
       </section>
 
