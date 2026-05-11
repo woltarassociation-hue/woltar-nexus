@@ -1,49 +1,52 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "../lib/articles";
 import SiteNav from "../components/SiteNav";
+
+const ALL_CATS = [
+  { id: "actualites", label: "Actualités",  icon: "✦",  desc: "Mises à jour, annonces et nouvelles" },
+  { id: "evenements", label: "Événements",  icon: "🎪", desc: "Animations RP, concours, festivités" },
+  { id: "fanarts",    label: "Fan-arts",    icon: "🎨", desc: "Créations artistiques de la communauté" },
+  { id: "rp",         label: "RP",          icon: "🎭", desc: "Récits, intrigues et aventures" },
+  { id: "prevention", label: "Prévention",  icon: "🛡", desc: "Sensibilisation et bonnes pratiques" },
+  { id: "regles",     label: "Règles",      icon: "📋", desc: "Cadre communautaire et lignes directrices" },
+];
 
 const CATEGORY_CONFIG = {
   actualites: {
     label: "Actualités",
     icon: "✦",
-    description:
-      "Mises à jour, annonces et nouvelles de l'univers Woltar. Restez informés des derniers événements, changements et actualités de la communauté.",
+    description: "Mises à jour, annonces et nouvelles de l'univers Woltar. Restez informés des derniers événements, changements et actualités de la communauté.",
     categories: ["actualites", "prevention", "regles"],
   },
   prevention: {
     label: "Prévention",
     icon: "🛡",
-    description:
-      "Sensibilisation, affiches et rappels importants pour la communauté Woltar. Protection des artistes, droits numériques et bonnes pratiques.",
+    description: "Sensibilisation, affiches et rappels importants pour la communauté Woltar. Protection des artistes, droits numériques et bonnes pratiques.",
     categories: ["prevention"],
   },
   regles: {
     label: "Règles",
     icon: "📋",
-    description:
-      "Cadre communautaire, droits d'auteur et lignes directrices de Woltar.net. Consultez les règles qui guident notre univers.",
+    description: "Cadre communautaire, droits d'auteur et lignes directrices de Woltar.net. Consultez les règles qui guident notre univers.",
     categories: ["regles"],
   },
   evenements: {
     label: "Événements",
     icon: "🎪",
-    description:
-      "Animations RP, concours, défis et festivités communautaires. Ne manquez aucun événement de l'univers Woltar.",
+    description: "Animations RP, concours, défis et festivités communautaires. Ne manquez aucun événement de l'univers Woltar.",
     categories: ["evenements"],
   },
   fanarts: {
     label: "Fan-arts",
     icon: "🎨",
-    description:
-      "Créations artistiques de la communauté Woltarienne. Fan-arts, illustrations et œuvres originales inspirées de l'univers Woltar.",
+    description: "Créations artistiques de la communauté Woltarienne. Fan-arts, illustrations et œuvres originales inspirées de l'univers Woltar.",
     categories: ["fanarts"],
   },
   rp: {
     label: "RP",
     icon: "🎭",
-    description:
-      "Récits, intrigues et aventures de l'univers Woltar. Plongez dans les histoires qui enrichissent le monde de Woltar.net.",
+    description: "Récits, intrigues et aventures de l'univers Woltar. Plongez dans les histoires qui enrichissent le monde de Woltar.net.",
     categories: ["rp"],
   },
 };
@@ -103,39 +106,35 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* Contenu principal */}
-      <main className="cat-main">
-        {articles.length === 0 ? (
-          <div className="cat-empty">
-            <span className="cat-empty-icon">{config.icon}</span>
-            <h2 className="cat-empty-title">Aucun article pour le moment</h2>
-            <p className="cat-empty-text">
-              Les articles de cette catégorie apparaîtront ici une fois publiés.
-            </p>
-            <Link to="/" className="cat-empty-btn">← Retour à l'accueil</Link>
-          </div>
-        ) : (
-          <div className="cat-content">
-            {featured && (
-              <div className="cat-featured-wrap">
-                <p className="cat-section-label">À la une</p>
-                <FeaturedCard article={featured} category={category} />
-              </div>
-            )}
+      {/* Contenu principal avec sidebar */}
+      <div className="cat-layout">
+        <CategoryNav currentCategory={category} />
 
-            {rest.length > 0 && (
-              <div className="cat-grid-section">
-                <p className="cat-section-label">Tous les articles</p>
-                <div className="cat-article-grid">
-                  {rest.map((a) => (
-                    <ArticleCard key={a.id} article={a} />
-                  ))}
+        <main className="cat-main">
+          {articles.length === 0 ? (
+            <EmptyState config={config} currentCategory={category} />
+          ) : (
+            <div className="cat-content">
+              {featured && (
+                <div className="cat-featured-wrap">
+                  <p className="cat-section-label">À la une</p>
+                  <FeaturedCard article={featured} category={category} />
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </main>
+              )}
+              {rest.length > 0 && (
+                <div className="cat-grid-section">
+                  <p className="cat-section-label">Tous les articles</p>
+                  <div className="cat-article-grid">
+                    {rest.map((a) => (
+                      <ArticleCard key={a.id} article={a} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
 
       <footer className="site-footer">
         <div className="site-footer-inner">
@@ -143,6 +142,87 @@ export default function CategoryPage() {
           <p>© Woltar.com 2000–2022 — Woltar.net 2023–2026. Tous droits réservés.</p>
         </div>
       </footer>
+    </div>
+  );
+}
+
+/* ── Menu déroulant catégories ───────────────────────────────── */
+
+function CategoryNav({ currentCategory }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const current = ALL_CATS.find((c) => c.id === currentCategory);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <aside className="catnav-aside" ref={ref}>
+      <button
+        className={`catnav-toggle${open ? " catnav-toggle--open" : ""}`}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="catnav-toggle-icon">{current?.icon || "◈"}</span>
+        <span className="catnav-toggle-label">{current?.label || "Sections"}</span>
+        <span className="catnav-toggle-arrow">{open ? "▴" : "▾"}</span>
+      </button>
+
+      <div className={`catnav-panel${open ? " catnav-panel--open" : ""}`}>
+        <p className="catnav-panel-header">Explorer les sections</p>
+        {ALL_CATS.map((cat) => (
+          <Link
+            key={cat.id}
+            to={`/${cat.id}`}
+            className={`catnav-item${cat.id === currentCategory ? " catnav-item--active" : ""}`}
+            onClick={() => setOpen(false)}
+          >
+            <span className="catnav-item-icon">{cat.icon}</span>
+            <span className="catnav-item-label">{cat.label}</span>
+            {cat.id === currentCategory && <span className="catnav-item-dot">◆</span>}
+          </Link>
+        ))}
+        <Link to="/" className="catnav-home-link" onClick={() => setOpen(false)}>
+          🏠 Retour à l'accueil
+        </Link>
+      </div>
+    </aside>
+  );
+}
+
+/* ── État vide enrichi ───────────────────────────────────────── */
+
+function EmptyState({ config, currentCategory }) {
+  const others = ALL_CATS.filter((c) => c.id !== currentCategory).slice(0, 4);
+
+  return (
+    <div className="cat-empty-wrap">
+      <div className="cat-empty">
+        <span className="cat-empty-icon">{config.icon}</span>
+        <h2 className="cat-empty-title">{config.label}</h2>
+        <p className="cat-empty-text">
+          Les articles de cette section apparaîtront ici une fois publiés par l'équipe Woltar.
+        </p>
+        <div className="cat-empty-badge">Bientôt disponible</div>
+      </div>
+
+      <div className="cat-empty-others">
+        <p className="cat-section-label">Explorer d'autres sections</p>
+        <div className="cat-empty-grid">
+          {others.map((cat) => (
+            <Link key={cat.id} to={`/${cat.id}`} className="cat-empty-card">
+              <span className="cat-empty-card-icon">{cat.icon}</span>
+              <span className="cat-empty-card-label">{cat.label}</span>
+              <span className="cat-empty-card-desc">{cat.desc}</span>
+              <span className="cat-empty-card-cta">Voir →</span>
+            </Link>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

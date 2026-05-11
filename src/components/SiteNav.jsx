@@ -63,7 +63,7 @@ export default function SiteNav() {
         ))}
       </nav>
 
-      {/* Logo centré — imposant */}
+      {/* Logo centré */}
       <div className="nav-brand">
         <Link to="/" className="nav-logo-link" onClick={close}>
           <img src="/logo_woltar.png" alt="Woltar" className="nav-logo" />
@@ -88,10 +88,6 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
-        <a href="/#association" className="nav-link nav-link--association" onClick={close}>
-          <span className="nav-symbol">◇</span>
-          <span>Association</span>
-        </a>
         {memberSession && (
           <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
             {memberSession.avatar ? (
@@ -125,10 +121,6 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
-          <a href="/#association" className="nav-link nav-link--association" onClick={close}>
-            <span className="nav-symbol">◇</span>
-            <span>Association</span>
-          </a>
           {memberSession && (
             <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
               <span className="nav-symbol">👤</span>
