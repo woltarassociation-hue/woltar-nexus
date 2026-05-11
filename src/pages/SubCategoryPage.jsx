@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import { getAllArticles, getFontStack, estimateReadTime } from "../lib/articles";
 import { getSubcategoryMeta, getSubcategories } from "../lib/subcategories";
 import { getPublishedForms } from "../lib/forms";
-import SiteNav from "../components/SiteNav";
+import CatPageNav from "../components/CatPageNav";
 
 const CATEGORY_META = {
   actualites: { label: "Actualités", icon: "✦", path: "/actualites" },
@@ -14,14 +14,6 @@ const CATEGORY_META = {
   rp:          { label: "RP", icon: "🎭", path: "/rp" },
 };
 
-const ALL_CATS = [
-  { id: "actualites", label: "Actualités", icon: "✦" },
-  { id: "evenements", label: "Événements", icon: "🎪" },
-  { id: "fanarts",    label: "Fan-arts",   icon: "🎨" },
-  { id: "rp",         label: "RP",         icon: "🎭" },
-  { id: "prevention", label: "Prévention", icon: "🛡" },
-  { id: "regles",     label: "Règles",     icon: "📋" },
-];
 
 export default function SubCategoryPage() {
   const { category, slug: subcategoryId } = useParams();
@@ -64,17 +56,16 @@ export default function SubCategoryPage() {
 
   return (
     <div className="cat-page">
-
-      <SiteNav />
+      <CatPageNav currentCategory={category} />
 
       <div className="cat-hero">
         <div className="cat-hero-inner">
-          <nav className="art-breadcrumb" style={{ marginBottom: "20px" }}>
-            <Link to="/" className="art-breadcrumb-link">Accueil</Link>
-            <span className="art-breadcrumb-sep">›</span>
-            <Link to={`/${category}`} className="art-breadcrumb-link">{catMeta.icon} {catMeta.label}</Link>
-            <span className="art-breadcrumb-sep">›</span>
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "12px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" }}>{subMeta.label}</span>
+          <nav className="cat-breadcrumb">
+            <Link to="/" className="cat-breadcrumb-link">Accueil</Link>
+            <span className="cat-breadcrumb-sep">›</span>
+            <Link to={`/${category}`} className="cat-breadcrumb-link">{catMeta.icon} {catMeta.label}</Link>
+            <span className="cat-breadcrumb-sep">›</span>
+            <span className="cat-breadcrumb-current">{subMeta.label}</span>
           </nav>
           <div className="cat-hero-eyebrow">
             <span className="cat-hero-icon-big">{subMeta.icon}</span>
@@ -94,7 +85,6 @@ export default function SubCategoryPage() {
       </div>
 
       <div className="cat-layout">
-        <CategoryNav currentCategory={category} />
         <main className="cat-main">
           {subcats.length > 0 && (
             <div className="cat-subcat-bar">
@@ -226,44 +216,3 @@ function FormItemCard({ form }) {
   );
 }
 
-function CategoryNav({ currentCategory }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const current = ALL_CATS.find((c) => c.id === currentCategory);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <aside className="catnav-aside" ref={ref}>
-      <button className={`catnav-toggle${open ? " catnav-toggle--open" : ""}`} onClick={() => setOpen(v => !v)}>
-        <span className="catnav-toggle-icon">{current?.icon || "◈"}</span>
-        <span className="catnav-toggle-label">{current?.label || "Sections"}</span>
-        <span className="catnav-toggle-arrow">{open ? "▴" : "▾"}</span>
-      </button>
-      <div className={`catnav-panel${open ? " catnav-panel--open" : ""}`}>
-        <p className="catnav-panel-header">Explorer les sections</p>
-        {ALL_CATS.map((cat) => (
-          <Link
-            key={cat.id}
-            to={`/${cat.id}`}
-            className={`catnav-item${cat.id === currentCategory ? " catnav-item--active" : ""}`}
-            onClick={() => setOpen(false)}
-          >
-            <span className="catnav-item-icon">{cat.icon}</span>
-            <span className="catnav-item-label">{cat.label}</span>
-            {cat.id === currentCategory && <span className="catnav-item-dot">◆</span>}
-          </Link>
-        ))}
-        <Link to="/" className="catnav-home-link" onClick={() => setOpen(false)}>
-          🏠 Retour à l'accueil
-        </Link>
-      </div>
-    </aside>
-  );
-}

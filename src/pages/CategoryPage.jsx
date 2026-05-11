@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "../lib/articles";
 import { getSubcategories } from "../lib/subcategories";
-import SiteNav from "../components/SiteNav";
+import CatPageNav from "../components/CatPageNav";
 
-const ALL_CATS = [
+const ALL_CATS_DESC = [
   { id: "actualites", label: "Actualités",  icon: "✦",  desc: "Mises à jour, annonces et nouvelles" },
   { id: "evenements", label: "Événements",  icon: "🎪", desc: "Animations RP, concours, festivités" },
   { id: "fanarts",    label: "Fan-arts",    icon: "🎨", desc: "Créations artistiques de la communauté" },
@@ -89,14 +89,11 @@ export default function CategoryPage() {
 
   return (
     <div className="cat-page">
+      <CatPageNav currentCategory={category} />
 
-
-      <SiteNav />
-
-      {/* Hero immersif */}
+      {/* Hero */}
       <div className="cat-hero">
         <div className="cat-hero-inner">
-          <Link to="/" className="cat-back">← Accueil</Link>
           <div className="cat-hero-eyebrow">
             <span className="cat-hero-icon-big">{config.icon}</span>
           </div>
@@ -108,10 +105,8 @@ export default function CategoryPage() {
         </div>
       </div>
 
-      {/* Contenu principal avec sidebar */}
+      {/* Contenu */}
       <div className="cat-layout">
-        <CategoryNav currentCategory={category} />
-
         <main className="cat-main">
           {subcats.length > 0 && (
             <div className="cat-subcat-bar">
@@ -157,58 +152,11 @@ export default function CategoryPage() {
   );
 }
 
-/* ── Menu déroulant catégories ───────────────────────────────── */
-
-function CategoryNav({ currentCategory }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const current = ALL_CATS.find((c) => c.id === currentCategory);
-
-  useEffect(() => {
-    const handler = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <aside className="catnav-aside" ref={ref}>
-      <button
-        className={`catnav-toggle${open ? " catnav-toggle--open" : ""}`}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="catnav-toggle-icon">{current?.icon || "◈"}</span>
-        <span className="catnav-toggle-label">{current?.label || "Sections"}</span>
-        <span className="catnav-toggle-arrow">{open ? "▴" : "▾"}</span>
-      </button>
-
-      <div className={`catnav-panel${open ? " catnav-panel--open" : ""}`}>
-        <p className="catnav-panel-header">Explorer les sections</p>
-        {ALL_CATS.map((cat) => (
-          <Link
-            key={cat.id}
-            to={`/${cat.id}`}
-            className={`catnav-item${cat.id === currentCategory ? " catnav-item--active" : ""}`}
-            onClick={() => setOpen(false)}
-          >
-            <span className="catnav-item-icon">{cat.icon}</span>
-            <span className="catnav-item-label">{cat.label}</span>
-            {cat.id === currentCategory && <span className="catnav-item-dot">◆</span>}
-          </Link>
-        ))}
-        <Link to="/" className="catnav-home-link" onClick={() => setOpen(false)}>
-          🏠 Retour à l'accueil
-        </Link>
-      </div>
-    </aside>
-  );
-}
 
 /* ── État vide enrichi ───────────────────────────────────────── */
 
 function EmptyState({ config, currentCategory }) {
-  const others = ALL_CATS.filter((c) => c.id !== currentCategory).slice(0, 4);
+  const others = ALL_CATS_DESC.filter((c) => c.id !== currentCategory).slice(0, 4);
 
   return (
     <div className="cat-empty-wrap">
