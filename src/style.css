@@ -3535,6 +3535,69 @@ footer:not(.site-footer) p {
 }
 .event-spotlight-cta:hover { opacity: 0.88; transform: translateY(-1px); }
 
+/* état article dynamique (curseur pointer) */
+.event-spotlight-inner--article {
+  cursor: pointer;
+}
+
+/* date article */
+.event-spotlight-date {
+  font-size: 12px;
+  color: #99aabb;
+  font-weight: 500;
+}
+
+/* fallback image (pas de coverUrl) */
+.event-spotlight-img-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 320px;
+  background: linear-gradient(135deg, #f8f0ff 0%, #e8f4ff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 72px;
+  opacity: 0.5;
+}
+
+/* état vide — rectangle blanc */
+.event-spotlight-inner--empty {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+}
+
+.event-spotlight-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.event-spotlight-placeholder-icon {
+  font-size: 44px;
+  opacity: 0.25;
+}
+
+.event-spotlight-placeholder-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ccc;
+  margin: 0;
+}
+
+.event-spotlight-placeholder-sub {
+  font-size: 13px;
+  color: #ddd;
+  font-style: italic;
+  margin: 0;
+}
+
 @media (max-width: 680px) {
   .event-spotlight-inner {
     grid-template-columns: 1fr;
@@ -4576,6 +4639,7 @@ footer:not(.site-footer) p {
   color: rgba(139,0,0,0.6);
   transition: color 0.2s, background 0.2s, border-color 0.2s, box-shadow 0.2s;
   white-space: nowrap;
+  margin-top: -6px;
 }
 
 .nav-wordmark:hover {

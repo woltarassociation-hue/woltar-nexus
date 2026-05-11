@@ -202,41 +202,8 @@ function MainSite() {
         )}
       </section>
 
-      {/* ── Événement à la une (si défini) ── */}
-      {affiche?.imageUrl && (
-        <div className="event-spotlight">
-          <div className="event-spotlight-inner">
-            <div className="event-spotlight-img-wrap">
-              <img
-                src={affiche.imageUrl}
-                alt={affiche.title || "Événement"}
-                className="event-spotlight-img"
-                onError={(e) => { e.target.style.display = "none"; }}
-              />
-            </div>
-            <div className="event-spotlight-body">
-              <span className="event-spotlight-label">Événement à la une</span>
-              {affiche.title && <h2 className="event-spotlight-title">{affiche.title}</h2>}
-              {affiche.summary && <p className="event-spotlight-summary">{affiche.summary}</p>}
-              {(affiche.dateStart || affiche.dateEnd) && (
-                <div className="event-spotlight-dates">
-                  {affiche.dateStart && (
-                    <span>Du {new Date(affiche.dateStart).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
-                  )}
-                  {affiche.dateEnd && (
-                    <span> au {new Date(affiche.dateEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
-                  )}
-                </div>
-              )}
-              {affiche.link && (
-                <a href={affiche.link} className="event-spotlight-cta">
-                  Voir l'événement →
-                </a>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Événement à la une (toujours visible) ── */}
+      <EventSpotlight affiche={affiche} articles={allPublishedArticles} />
 
       {/* ── Catégories en vedette ── */}
       <section className="section home-categories-section">
@@ -429,6 +396,115 @@ function MainSite() {
       <footer>
         <p>© Woltar.com 2000–2022 — Woltar.net 2023–2026. Tous droits réservés.</p>
       </footer>
+    </div>
+  );
+}
+
+/* ── Événement à la une — toujours visible ───────────────── */
+
+function EventSpotlight({ affiche, articles }) {
+  const navigate = useNavigate();
+
+  // Priorité 1 : affiche manuelle avec image
+  if (affiche?.imageUrl) {
+    return (
+      <div className="event-spotlight">
+        <div className="event-spotlight-inner">
+          <div className="event-spotlight-img-wrap">
+            <img
+              src={affiche.imageUrl}
+              alt={affiche.title || "Événement"}
+              className="event-spotlight-img"
+              onError={(e) => { e.target.style.display = "none"; }}
+            />
+          </div>
+          <div className="event-spotlight-body">
+            <span className="event-spotlight-label">Événement à la une</span>
+            {affiche.title && <h2 className="event-spotlight-title">{affiche.title}</h2>}
+            {affiche.summary && <p className="event-spotlight-summary">{affiche.summary}</p>}
+            {(affiche.dateStart || affiche.dateEnd) && (
+              <div className="event-spotlight-dates">
+                {affiche.dateStart && (
+                  <span>Du {new Date(affiche.dateStart).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
+                )}
+                {affiche.dateEnd && (
+                  <span> au {new Date(affiche.dateEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
+                )}
+              </div>
+            )}
+            {affiche.link && (
+              <a href={affiche.link} className="event-spotlight-cta">Voir l'événement →</a>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Priorité 2 : dernier article publié de la catégorie "evenements"
+  const latest = articles
+    .filter((a) => a.category === "evenements")
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] || null;
+
+  if (latest) {
+    const href = `/${latest.category}/${latest.slug}`;
+    const fontStack = getFontStack(latest.font);
+    return (
+      <div className="event-spotlight">
+        <div
+          className="event-spotlight-inner event-spotlight-inner--article"
+          onClick={() => navigate(href)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === "Enter" && navigate(href)}
+        >
+          <div className="event-spotlight-img-wrap">
+            {latest.coverUrl ? (
+              <img
+                src={latest.coverUrl}
+                alt={latest.title}
+                className="event-spotlight-img"
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
+            ) : (
+              <div className="event-spotlight-img-fallback">🎪</div>
+            )}
+          </div>
+          <div className="event-spotlight-body">
+            <span className="event-spotlight-label">Événement à la une</span>
+            <h2
+              className="event-spotlight-title"
+              style={{ fontFamily: fontStack, color: latest.titleColor || undefined }}
+            >
+              {latest.title}
+            </h2>
+            {latest.summary && (
+              <p className="event-spotlight-summary" style={{ color: latest.textColor || undefined }}>
+                {latest.summary}
+              </p>
+            )}
+            <span className="event-spotlight-date">
+              {new Date(latest.createdAt).toLocaleDateString("fr-FR", {
+                day: "numeric", month: "long", year: "numeric",
+              })}
+            </span>
+            <span className="event-spotlight-cta">Voir l'événement →</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Priorité 3 : rectangle blanc placeholder (toujours présent)
+  return (
+    <div className="event-spotlight">
+      <div className="event-spotlight-inner event-spotlight-inner--empty">
+        <div className="event-spotlight-placeholder">
+          <span className="event-spotlight-placeholder-icon">🎪</span>
+          <p className="event-spotlight-placeholder-title">Événement à la une</p>
+          <p className="event-spotlight-placeholder-sub">Bientôt disponible</p>
+        </div>
+      </div>
     </div>
   );
 }
