@@ -56,94 +56,73 @@ export default function ArticlePage() {
   const isFull = article.coverMode === "full";
 
   return (
-    <div
-      className="art-page"
-      style={{ "--art-accent": article.accentColor || "#1fa8dc" }}
-    >
+    <div className="art-page" style={{ "--art-accent": article.accentColor || "#1fa8dc" }}>
       <div className="red-pattern" />
       <SiteNav />
 
-      {/* Hero — bannière recadrée OU header compact selon coverMode */}
-      <div className={`art-hero${isFull ? " art-hero--compact" : ""}`}>
-        {!isFull && (
-          <div className="art-hero-cover">
-            {article.coverUrl ? (
-              <img src={article.coverUrl} alt={article.title} className="art-hero-img" />
-            ) : (
-              <div className="art-hero-cover-empty">
-                <div className="art-hero-cover-pattern" />
-              </div>
-            )}
-            <div className="art-hero-overlay" />
-          </div>
-        )}
-
-        <div className="art-hero-content">
-          <nav className="art-breadcrumb">
-            <Link to="/" className="art-breadcrumb-link">Accueil</Link>
-            <span className="art-breadcrumb-sep">›</span>
-            <Link to={meta.path} className="art-breadcrumb-link">
-              {meta.icon} {meta.label}
-            </Link>
-          </nav>
-
-          <h1 className="art-hero-title" style={{ fontFamily: titleStack }}>
-            {article.title}
-          </h1>
-
-          <div className="art-hero-meta">
-            {article.author && (
-              <span className="art-meta-item">
-                <span className="art-meta-icon">✍</span>
-                {article.author}
-              </span>
-            )}
-            <span className="art-meta-item">
-              <span className="art-meta-icon">📅</span>
-              {new Date(article.createdAt).toLocaleDateString("fr-FR", {
-                day: "numeric", month: "long", year: "numeric",
-              })}
-            </span>
-            <span className="art-meta-item">
-              <span className="art-meta-icon">⏱</span>
-              {readTime} min de lecture
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Image complète (mode A4) — affichée en pleine largeur sous le header */}
-      {isFull && article.coverUrl && (
-        <div className="art-cover-full">
-          <img src={article.coverUrl} alt={article.title} className="art-cover-full-img" />
+      {/* Cover image — banner mode */}
+      {!isFull && article.coverUrl && (
+        <div className="art-cover-wrap">
+          <img src={article.coverUrl} alt={article.title} className="art-cover-img" />
         </div>
       )}
 
-      {/* Corps de l'article */}
+      {/* Header */}
+      <div className="art-header">
+        <nav className="art-breadcrumb">
+          <Link to="/" className="art-breadcrumb-link">Accueil</Link>
+          <span className="art-breadcrumb-sep">›</span>
+          <Link to={meta.path} className="art-breadcrumb-link">{meta.icon} {meta.label}</Link>
+        </nav>
+
+        <div className="art-cat-badge">
+          <span>{meta.icon}</span>
+          <span>{meta.label}</span>
+        </div>
+
+        <h1 className="art-title" style={{ fontFamily: titleStack }}>
+          {article.title}
+        </h1>
+
+        <div className="art-meta">
+          {article.author && (
+            <span className="art-meta-item">
+              <span className="art-meta-icon">✍</span>
+              {article.author}
+            </span>
+          )}
+          <span className="art-meta-item">
+            <span className="art-meta-icon">📅</span>
+            {new Date(article.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+          </span>
+          <span className="art-meta-item">
+            <span className="art-meta-icon">⏱</span>
+            {readTime} min de lecture
+          </span>
+        </div>
+      </div>
+
+      {/* Body */}
       <div className="art-body">
         <div className="art-container">
-          {article.summary && (
-            <div
-              className="art-intro"
-              style={{ borderColor: article.accentColor || "#1fa8dc" }}
-            >
-              <p style={{ fontFamily: bodyStack, color: article.textColor }}>
-                {article.summary}
-              </p>
+          {/* Full image mode */}
+          {isFull && article.coverUrl && (
+            <div className="art-cover-full-wrap">
+              <img src={article.coverUrl} alt={article.title} />
             </div>
           )}
 
-          <div
-            className="art-text"
-            style={{ fontFamily: bodyStack, color: article.textColor || "#1a1020" }}
-          >
+          {article.summary && (
+            <div className="art-intro" style={{ borderColor: article.accentColor || "#8b0000" }}>
+              <p style={{ fontFamily: bodyStack }}>{article.summary}</p>
+            </div>
+          )}
+
+          <div className="art-text" style={{ fontFamily: bodyStack, color: article.textColor || "#1e1626" }}>
             {hasHtml ? (
-              <div
-                className="art-rte-content"
-                dangerouslySetInnerHTML={{ __html: article.content }}
-              />
+              <div className="art-rte-content" dangerouslySetInnerHTML={{ __html: article.content }} />
             ) : (
-              (article.content || "").split("\n").filter((l) => l.trim()).map((para, i) => (
+              (article.content || "").split("\n").filter(l => l.trim()).map((para, i) => (
                 <p key={i} className="art-paragraph">{para}</p>
               ))
             )}

@@ -6,6 +6,7 @@ import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportC
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
+import { getSubcategories } from "../lib/subcategories";
 import RichTextEditor from "./RichTextEditor";
 
 const stripHtml = (html) =>
@@ -114,6 +115,7 @@ const EMPTY_FORM = {
   author: "",
   tags: "",
   category: "actualites",
+  subcategory: "",
   summary: "",
   content: "",
   coverFile: null,
@@ -212,6 +214,7 @@ export default function AssociationDashboard() {
         author: form.author,
         tags: form.tags,
         category: form.category,
+        subcategory: form.subcategory || "",
         summary: form.summary,
         content: form.content,
         coverUrl,
@@ -454,7 +457,7 @@ export default function AssociationDashboard() {
                 <select
                   className="db-select"
                   value={form.category}
-                  onChange={(e) => set("category", e.target.value)}
+                  onChange={(e) => { set("category", e.target.value); set("subcategory", ""); }}
                 >
                   {CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -462,6 +465,22 @@ export default function AssociationDashboard() {
                     </option>
                   ))}
                 </select>
+
+                {getSubcategories(form.category).length > 0 && (
+                  <>
+                    <label className="db-label">Sous-catégorie (optionnel)</label>
+                    <select
+                      className="db-select"
+                      value={form.subcategory || ""}
+                      onChange={(e) => set("subcategory", e.target.value)}
+                    >
+                      <option value="">— Aucune —</option>
+                      {getSubcategories(form.category).map((sub) => (
+                        <option key={sub.id} value={sub.id}>{sub.icon} {sub.label}</option>
+                      ))}
+                    </select>
+                  </>
+                )}
 
                 <label className="db-label">Résumé court</label>
                 <input
@@ -1056,6 +1075,9 @@ function AfficheSection() {
   });
   const [form, setForm] = useState({
     title: affiche?.title || "",
+    summary: affiche?.summary || "",
+    dateStart: affiche?.dateStart || "",
+    dateEnd: affiche?.dateEnd || "",
     link: affiche?.link || "",
     imageUrl: affiche?.imageUrl || "",
     imageFile: null,
@@ -1091,6 +1113,9 @@ function AfficheSection() {
       }
       const record = {
         title: form.title,
+        summary: form.summary,
+        dateStart: form.dateStart,
+        dateEnd: form.dateEnd,
         link: form.link,
         imageUrl,
         updatedAt: new Date().toISOString(),
@@ -1114,7 +1139,7 @@ function AfficheSection() {
     localStorage.removeItem(AFFICHE_KEY);
     window.dispatchEvent(new Event("woltar:affiche"));
     setAffiche(null);
-    setForm({ title: "", link: "", imageUrl: "", imageFile: null, preview: null });
+    setForm({ title: "", summary: "", dateStart: "", dateEnd: "", link: "", imageUrl: "", imageFile: null, preview: null });
     setSaved(false);
   };
 
@@ -1137,6 +1162,32 @@ function AfficheSection() {
             placeholder="Ex : Event anniversaire 3 ans"
             value={form.title}
             onChange={(e) => { setF("title", e.target.value); setSaved(false); }}
+          />
+
+          <label className="db-label">Description courte</label>
+          <textarea
+            className="db-input"
+            placeholder="Une description courte de l'événement…"
+            rows={3}
+            value={form.summary}
+            onChange={(e) => { setF("summary", e.target.value); setSaved(false); }}
+            style={{ resize: "vertical", minHeight: "72px" }}
+          />
+
+          <label className="db-label">Date de début (optionnel)</label>
+          <input
+            className="db-input"
+            type="date"
+            value={form.dateStart}
+            onChange={(e) => { setF("dateStart", e.target.value); setSaved(false); }}
+          />
+
+          <label className="db-label">Date de fin (optionnel)</label>
+          <input
+            className="db-input"
+            type="date"
+            value={form.dateEnd}
+            onChange={(e) => { setF("dateEnd", e.target.value); setSaved(false); }}
           />
 
           <label className="db-label">Lien (facultatif)</label>

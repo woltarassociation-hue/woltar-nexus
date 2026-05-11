@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "../lib/articles";
+import { getSubcategories } from "../lib/subcategories";
 import SiteNav from "../components/SiteNav";
 
 const ALL_CATS = [
@@ -84,6 +85,7 @@ export default function CategoryPage() {
 
   const featured = articles[0] || null;
   const rest = articles.slice(1);
+  const subcats = getSubcategories(category);
 
   return (
     <div className="cat-page">
@@ -111,6 +113,15 @@ export default function CategoryPage() {
         <CategoryNav currentCategory={category} />
 
         <main className="cat-main">
+          {subcats.length > 0 && (
+            <div className="cat-subcat-bar">
+              {subcats.map(sub => (
+                <Link key={sub.id} to={`/${category}/${sub.id}`} className="cat-subcat-pill">
+                  {sub.icon} {sub.label}
+                </Link>
+              ))}
+            </div>
+          )}
           {articles.length === 0 ? (
             <EmptyState config={config} currentCategory={category} />
           ) : (

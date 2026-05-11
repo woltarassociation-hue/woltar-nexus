@@ -1,13 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
-import { Routes, Route, useNavigate, Link } from "react-router-dom";
+import { Routes, Route, useNavigate, useParams, Link } from "react-router-dom";
 import AssociationDashboard from "./components/AssociationDashboard.jsx";
 import SiteNav from "./components/SiteNav.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
+import SubCategoryPage from "./pages/SubCategoryPage.jsx";
 import SetupPage from "./pages/SetupPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
+import { getSubcategories } from "./lib/subcategories.js";
 import { saveCandidature } from "./lib/candidatures.js";
 import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
 
@@ -20,33 +22,6 @@ const stats = [
 ];
 
 const CAROUSEL_CATS = ["actualites", "evenements", "prevention", "regles"];
-
-const STATIC_SLIDES = [
-  {
-    category: "Événements 2026",
-    subcategory: "Animations RP",
-    title: "Event anniversaire 3 ans",
-    text: "Entrez dans l'arène ! À l'approche des 3 ans de Woltar.net, un événement inédit se prépare. Défis RP, animations communautaires et surprises seront au rendez-vous.",
-    image: "/affiche_entrez_dans_larene.png",
-    href: "/evenements",
-  },
-  {
-    category: "Actualités",
-    subcategory: "Prévention",
-    title: "L'IA n'est pas neutre",
-    text: "Cette affiche de prévention rappelle l'impact réel de l'intelligence artificielle sur les artistes et l'économie créative. Woltar.net encourage une utilisation responsable.",
-    image: "/affiche_prevention_1.png",
-    href: "/prevention",
-  },
-  {
-    category: "Actualités",
-    subcategory: "Règles",
-    title: "L'IA n'efface pas les droits d'auteur",
-    text: "Les règles de Woltar.net rappellent l'importance du respect des artistes. Plagiat et utilisation non autorisée d'œuvres sont interdits au sein de la communauté.",
-    image: "/affiche_regles_1.png",
-    href: "/regles",
-  },
-];
 
 function stripHtml(html) {
   return (html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
@@ -106,6 +81,17 @@ function usePublishedArticles(categories) {
   return articles;
 }
 
+/* ── Smart routing: article OR subcategory ────────────────── */
+
+function ArticleOrSubcat() {
+  const { category, slug } = useParams();
+  const subcats = getSubcategories(category);
+  if (subcats.some((s) => s.id === slug)) {
+    return <SubCategoryPage />;
+  }
+  return <ArticlePage />;
+}
+
 /* ── Router ───────────────────────────────────────────────── */
 
 export default function App() {
@@ -116,7 +102,7 @@ export default function App() {
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/compte" element={<AccountPage />} />
       <Route path="/association/dashboard" element={<AssociationDashboard />} />
-      <Route path="/:category/:slug" element={<ArticlePage />} />
+      <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
       <Route path="/:category" element={<CategoryPage />} />
     </Routes>
   );
@@ -152,16 +138,14 @@ function MainSite() {
     return () => window.removeEventListener("woltar:affiche", reload);
   }, []);
 
-  // Carousel : articles publiés, featuredés en priorité, fallback statique
+  // Carousel : 3 derniers articles publiés, triés par date décroissante
   const allPublishedArticles = usePublishedArticles(Object.keys(CATEGORY_META));
   const newsSlides = useMemo(() => {
-    if (allPublishedArticles.length === 0) return STATIC_SLIDES;
-    const sorted = [...allPublishedArticles].sort((a, b) => {
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      return 0;
-    });
-    return sorted.slice(0, 6).map((a) => ({
+    if (allPublishedArticles.length === 0) return [];
+    const sorted = [...allPublishedArticles].sort((a, b) =>
+      new Date(b.createdAt) - new Date(a.createdAt)
+    );
+    return sorted.slice(0, 3).map((a) => ({
       category: CATEGORY_META[a.category]?.label || a.category,
       subcategory: a.author || "",
       title: a.title,
@@ -175,11 +159,12 @@ function MainSite() {
   const remaining = 40 - total;
 
   useEffect(() => {
+    if (newsSlides.length === 0) return;
     const timer = setInterval(() => {
       setCurrentNewsIndex((prev) => (prev + 1) % newsSlides.length);
     }, 20000);
     return () => clearInterval(timer);
-  }, []);
+  }, [newsSlides.length]);
 
   const handleStat = (stat, value) => {
     const clean = Math.max(0, Math.min(10, Number(value)));
@@ -209,30 +194,50 @@ function MainSite() {
           </div>
         </div>
 
-        <div className="hero-content">
-          <Carousel
-            slides={newsSlides}
-            currentIndex={currentNewsIndex}
-            setCurrentIndex={setCurrentNewsIndex}
-          />
-        </div>
+        {newsSlides.length > 0 && (
+          <div className="hero-content">
+            <Carousel
+              slides={newsSlides}
+              currentIndex={currentNewsIndex}
+              setCurrentIndex={setCurrentNewsIndex}
+            />
+          </div>
+        )}
       </section>
 
-      {/* ── Affiche événement (si définie) ── */}
+      {/* ── Événement à la une (si défini) ── */}
       {affiche?.imageUrl && (
-        <div className="affiche-banner">
-          {affiche.link ? (
-            <a href={affiche.link} className="affiche-banner-inner">
-              <img src={affiche.imageUrl} alt={affiche.title || "Affiche"} className="affiche-banner-img" onError={(e) => { e.target.style.display = "none"; }} />
-              {affiche.title && <div className="affiche-banner-label">{affiche.title}</div>}
-              <div className="affiche-banner-cta">Voir l'événement →</div>
-            </a>
-          ) : (
-            <div className="affiche-banner-inner affiche-banner-inner--static">
-              <img src={affiche.imageUrl} alt={affiche.title || "Affiche"} className="affiche-banner-img" onError={(e) => { e.target.style.display = "none"; }} />
-              {affiche.title && <div className="affiche-banner-label">{affiche.title}</div>}
+        <div className="event-spotlight">
+          <div className="event-spotlight-inner">
+            <div className="event-spotlight-img-wrap">
+              <img
+                src={affiche.imageUrl}
+                alt={affiche.title || "Événement"}
+                className="event-spotlight-img"
+                onError={(e) => { e.target.style.display = "none"; }}
+              />
             </div>
-          )}
+            <div className="event-spotlight-body">
+              <span className="event-spotlight-label">Événement à la une</span>
+              {affiche.title && <h2 className="event-spotlight-title">{affiche.title}</h2>}
+              {affiche.summary && <p className="event-spotlight-summary">{affiche.summary}</p>}
+              {(affiche.dateStart || affiche.dateEnd) && (
+                <div className="event-spotlight-dates">
+                  {affiche.dateStart && (
+                    <span>Du {new Date(affiche.dateStart).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
+                  )}
+                  {affiche.dateEnd && (
+                    <span> au {new Date(affiche.dateEnd).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</span>
+                  )}
+                </div>
+              )}
+              {affiche.link && (
+                <a href={affiche.link} className="event-spotlight-cta">
+                  Voir l'événement →
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
