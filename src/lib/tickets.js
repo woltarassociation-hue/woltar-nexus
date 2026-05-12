@@ -1,57 +1,105 @@
-// CRUD tickets dans localStorage
-// Structure ticket :
-// { id, pseudo, email, category, subject, message, urgency, imageUrl?,
-//   status: "Ouvert"|"En cours"|"Résolu"|"Fermé",
-//   createdAt, updatedAt }
-//
-// Config Discord stockée dans localStorage (admin seulement) :
-// woltar_discord_config = { webhookUrl, enabled }
+import { supabase, withTimeout, toDb, fromDb } from "./db.js";
 
 const TICKETS_KEY = "woltar_tickets";
+let _cache = null;
+
+function dispatch() {
+  window.dispatchEvent(new Event("woltar:tickets"));
+}
+
+function readLocal() {
+  try { return JSON.parse(localStorage.getItem(TICKETS_KEY) || "[]"); } catch { return []; }
+}
 
 export function getTickets() {
+  return _cache ?? readLocal();
+}
+
+async function loadFromSupabase() {
+  if (!supabase) return;
   try {
-    return JSON.parse(localStorage.getItem(TICKETS_KEY) || "[]");
-  } catch {
-    return [];
+    const { data, error } = await withTimeout(
+      supabase.from("tickets").select("*").order("created_at", { ascending: false })
+    );
+    if (error) throw error;
+    _cache = (data || []).map(fromDb);
+    localStorage.setItem(TICKETS_KEY, JSON.stringify(_cache));
+    dispatch();
+  } catch (err) {
+    console.warn("[tickets] Supabase load failed:", err.message);
   }
 }
 
-export function saveTicket(ticket) {
+// Auto-init + realtime
+if (supabase) {
+  loadFromSupabase();
+  supabase
+    .channel("tickets-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "tickets" }, loadFromSupabase)
+    .subscribe();
+}
+
+export async function saveTicket(ticket) {
   const tickets = getTickets();
   const now = new Date().toISOString();
-  const idx = tickets.findIndex((t) => t.id === ticket.id);
-  if (idx >= 0) {
-    tickets[idx] = { ...tickets[idx], ...ticket, updatedAt: now };
-  } else {
-    tickets.unshift({ ...ticket, createdAt: ticket.createdAt || now, updatedAt: now });
+  const id = ticket.id || crypto.randomUUID();
+  const record = { ...ticket, id, createdAt: ticket.createdAt || now, updatedAt: now };
+  const idx = tickets.findIndex((t) => t.id === id);
+  if (idx >= 0) tickets[idx] = record; else tickets.unshift(record);
+  _cache = tickets;
+  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+  dispatch();
+
+  if (!supabase) return { record, syncOk: false };
+  try {
+    const { error } = await withTimeout(
+      supabase.from("tickets").upsert([toDb(record)])
+    );
+    if (error) throw error;
+    return { record, syncOk: true };
+  } catch (err) {
+    console.error("[saveTicket] Supabase failed:", err.message);
+    return { record, syncOk: false, syncError: err.message };
   }
-  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
-  window.dispatchEvent(new Event("woltar:tickets"));
 }
 
-export function deleteTicket(id) {
+export async function deleteTicket(id) {
   const tickets = getTickets().filter((t) => t.id !== id);
+  _cache = tickets;
   localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
-  window.dispatchEvent(new Event("woltar:tickets"));
+  dispatch();
+  if (!supabase) return;
+  try {
+    await withTimeout(supabase.from("tickets").delete().eq("id", id));
+  } catch (err) {
+    console.error("[deleteTicket] Supabase failed:", err.message);
+  }
 }
 
-export function updateTicketStatus(id, status) {
+export async function updateTicketStatus(id, status) {
   const tickets = getTickets();
   const idx = tickets.findIndex((t) => t.id === id);
-  if (idx >= 0) {
-    tickets[idx] = { ...tickets[idx], status, updatedAt: new Date().toISOString() };
-    localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
-    window.dispatchEvent(new Event("woltar:tickets"));
+  if (idx < 0) return;
+  tickets[idx] = { ...tickets[idx], status, updatedAt: new Date().toISOString() };
+  _cache = [...tickets];
+  localStorage.setItem(TICKETS_KEY, JSON.stringify(tickets));
+  dispatch();
+  if (!supabase) return;
+  try {
+    await withTimeout(
+      supabase
+        .from("tickets")
+        .update(toDb({ status, updatedAt: tickets[idx].updatedAt }))
+        .eq("id", id)
+    );
+  } catch (err) {
+    console.error("[updateTicketStatus] Supabase failed:", err.message);
   }
 }
 
+// Config Discord — stockée localement uniquement (secret d'admin)
 export function getDiscordConfig() {
-  try {
-    return JSON.parse(localStorage.getItem("woltar_discord_config") || "{}");
-  } catch {
-    return {};
-  }
+  try { return JSON.parse(localStorage.getItem("woltar_discord_config") || "{}"); } catch { return {}; }
 }
 
 export function saveDiscordConfig(config) {
@@ -72,8 +120,7 @@ export async function sendDiscordNotification(ticket) {
         adminWebhookUrl: config.webhookUrl || undefined,
       }),
     });
-    const data = await res.json();
-    return data;
+    return await res.json();
   } catch {
     return { ok: false, error: "Réseau" };
   }

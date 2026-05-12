@@ -1,42 +1,95 @@
+import { supabase, withTimeout, toDb, fromDb } from "./db.js";
+
 const KEY = "woltar_rp_candidatures";
+let _cache = null;
 
 function dispatch() {
   window.dispatchEvent(new Event("woltar:candidatures"));
 }
 
+function readLocal() {
+  try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
+}
+
 export function getAllCandidatures() {
+  return _cache ?? readLocal();
+}
+
+async function loadFromSupabase() {
+  if (!supabase) return;
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "[]");
-  } catch {
-    return [];
+    const { data, error } = await withTimeout(
+      supabase.from("candidatures").select("*").order("created_at", { ascending: false })
+    );
+    if (error) throw error;
+    _cache = (data || []).map(fromDb);
+    localStorage.setItem(KEY, JSON.stringify(_cache));
+    dispatch();
+  } catch (err) {
+    console.warn("[candidatures] Supabase load failed:", err.message);
   }
 }
 
-export function saveCandidature(data) {
+// Auto-init + realtime
+if (supabase) {
+  loadFromSupabase();
+  supabase
+    .channel("candidatures-changes")
+    .on("postgres_changes", { event: "*", schema: "public", table: "candidatures" }, loadFromSupabase)
+    .subscribe();
+}
+
+export async function saveCandidature(data) {
   const all = getAllCandidatures();
   const id = crypto.randomUUID();
   const now = new Date().toISOString();
   const record = { ...data, id, status: "pending", createdAt: now };
   all.unshift(record);
+  _cache = all;
   localStorage.setItem(KEY, JSON.stringify(all));
   dispatch();
+
+  if (!supabase) return record;
+  try {
+    await withTimeout(supabase.from("candidatures").insert([toDb(record)]));
+  } catch (err) {
+    console.error("[saveCandidature] Supabase failed:", err.message);
+  }
   return record;
 }
 
-export function updateCandidatureStatus(id, status) {
+export async function updateCandidatureStatus(id, status) {
   const all = getAllCandidatures();
   const idx = all.findIndex((c) => c.id === id);
-  if (idx >= 0) {
-    all[idx] = { ...all[idx], status, updatedAt: new Date().toISOString() };
-    localStorage.setItem(KEY, JSON.stringify(all));
-    dispatch();
+  if (idx < 0) return;
+  all[idx] = { ...all[idx], status, updatedAt: new Date().toISOString() };
+  _cache = [...all];
+  localStorage.setItem(KEY, JSON.stringify(all));
+  dispatch();
+  if (!supabase) return;
+  try {
+    await withTimeout(
+      supabase
+        .from("candidatures")
+        .update(toDb({ status, updatedAt: all[idx].updatedAt }))
+        .eq("id", id)
+    );
+  } catch (err) {
+    console.error("[updateCandidatureStatus] Supabase failed:", err.message);
   }
 }
 
-export function deleteCandidature(id) {
+export async function deleteCandidature(id) {
   const all = getAllCandidatures().filter((c) => c.id !== id);
+  _cache = all;
   localStorage.setItem(KEY, JSON.stringify(all));
   dispatch();
+  if (!supabase) return;
+  try {
+    await withTimeout(supabase.from("candidatures").delete().eq("id", id));
+  } catch (err) {
+    console.error("[deleteCandidature] Supabase failed:", err.message);
+  }
 }
 
 export function exportCandidaturesCSV(candidatures) {

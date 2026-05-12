@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { getArticleBySlug, getFontStack, estimateReadTime } from "../lib/articles";
+import { getArticleBySlug, getFontStack, estimateReadTime, articlesReady } from "../lib/articles";
 import SiteNav from "../components/SiteNav";
 
 const CATEGORY_META = {
@@ -17,12 +17,18 @@ export default function ArticlePage() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Attendre que le premier chargement Supabase soit terminé avant
+  // de décider si l'article existe. Sans ça, une navigation directe
+  // vers l'URL d'un article redirige immédiatement (cache vide) alors
+  // que Supabase n'a pas encore répondu.
   useEffect(() => {
     setLoading(true);
-    const found = getArticleBySlug(category, slug);
-    setArticle(found);
-    setLoading(false);
-    window.scrollTo(0, 0);
+    articlesReady.then(() => {
+      const found = getArticleBySlug(category, slug);
+      setArticle(found);
+      setLoading(false);
+      window.scrollTo(0, 0);
+    });
   }, [category, slug]);
 
   useEffect(() => {
@@ -37,7 +43,6 @@ export default function ArticlePage() {
   if (loading) {
     return (
       <div className="art-loading">
-
         <span>Chargement…</span>
       </div>
     );

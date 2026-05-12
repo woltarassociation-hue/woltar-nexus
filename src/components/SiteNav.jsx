@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { getMemberSession } from "../lib/members";
 import { getSession } from "../lib/profiles";
 
 const LEFT_LINKS = [
-  { label: "Accueil",    icon: "🏠",  to: "/",           isHash: false },
-  { label: "Histoire",   icon: "📖",  to: "/#histoire",  isHash: true },
-  { label: "Actualités", icon: "✦",   to: "/actualites", isHash: false },
+  { label: "Accueil",    icon: "🏠",  to: "/",            isHash: false },
+  { label: "Histoire",   icon: "📖",  to: "/#histoire",   isHash: true  },
+  { label: "Actualités", icon: "✦",   to: "/actualites",  isHash: false },
+  { label: "Événements", icon: "🎪",  to: "/evenements",  isHash: false },
 ];
 
 const RIGHT_LINKS = [
-  { label: "Événements", icon: "🎪", to: "/evenements", isHash: false },
-  { label: "Fan-arts",   icon: "🎨", to: "/fanarts",    isHash: false },
-  { label: "RP",         icon: "🎭", to: "/rp",         isHash: false },
-  { label: "Tickets",    icon: "🎫", to: "/tickets",    isHash: false },
+  { label: "Fan-arts", icon: "🎨", to: "/fanarts",  isHash: false },
+  { label: "RP",       icon: "🎭", to: "/rp",       isHash: false },
+  { label: "Tickets",  icon: "🎫", to: "/tickets",  isHash: false },
 ];
 
 function NavLink({ link, active, onClick }) {
@@ -36,20 +35,9 @@ function NavLink({ link, active, onClick }) {
 
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
-  const [memberSession, setMemberSession] = useState(() => getMemberSession());
   const [adminSession, setAdminSession] = useState(() => getSession());
   const { pathname } = useLocation();
   const close = () => setOpen(false);
-
-  useEffect(() => {
-    const refresh = () => setMemberSession(getMemberSession());
-    window.addEventListener("woltar:members", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("woltar:members", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
 
   useEffect(() => {
     const refresh = () => setAdminSession(getSession());
@@ -60,6 +48,8 @@ export default function SiteNav() {
       window.removeEventListener("storage", refresh);
     };
   }, []);
+
+  const isAdmin = Boolean(adminSession && adminSession.role === "admin");
 
   return (
     <header className="navbar">
@@ -90,7 +80,7 @@ export default function SiteNav() {
         </a>
       </div>
 
-      {/* Right — 3 liens + admin tab + compte membre */}
+      {/* Right — 4 liens + accès admin (si connecté) + compte membre */}
       <nav className="nav-right">
         {RIGHT_LINKS.map((link) => (
           <NavLink
@@ -100,20 +90,10 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
-        {adminSession && adminSession.role === "admin" && (
+        {isAdmin && (
           <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
             <span className="nav-symbol">⚙</span>
             <span>Admin</span>
-          </Link>
-        )}
-        {memberSession && (
-          <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
-            {memberSession.avatar ? (
-              <img src={memberSession.avatar} alt="" className="nav-member-avatar" />
-            ) : (
-              <span className="nav-symbol">👤</span>
-            )}
-            <span>{memberSession.pseudo}</span>
           </Link>
         )}
       </nav>
@@ -139,16 +119,10 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
-          {adminSession && adminSession.role === "admin" && (
+          {isAdmin && (
             <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
               <span className="nav-symbol">⚙</span>
               <span>Admin</span>
-            </Link>
-          )}
-          {memberSession && (
-            <Link to="/compte" className="nav-link nav-link--member" onClick={close}>
-              <span className="nav-symbol">👤</span>
-              <span>{memberSession.pseudo}</span>
             </Link>
           )}
         </div>

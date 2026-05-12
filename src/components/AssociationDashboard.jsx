@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { saveArticle, uploadCoverImage } from "../lib/supabase";
+import { saveArticle, uploadCoverImage, supabaseConfigured } from "../lib/supabase";
+import { getAffiche, saveAffiche, clearAffiche } from "../lib/affiche";
 import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
@@ -243,20 +244,20 @@ export default function AssociationDashboard() {
         const dest = SECTION_MAP[form.category];
         const articleRoute = `/${form.category}/${record.slug}`;
         setFeedback({
-          type: syncError ? "warning" : "success",
-          message: syncError
-            ? `✓ Article publié dans "${dest?.label || form.category}" (sauvegardé localement).`
-            : `✓ Article publié dans "${dest?.label || form.category}".`,
-          route: articleRoute,
-          routeLabel: "Voir l'article →",
+          type: syncOk ? "success" : "error",
+          message: syncOk
+            ? `✓ Article publié dans "${dest?.label || form.category}" — visible sur tous les appareils.`
+            : `✗ Article non enregistré en ligne. ${syncError || "Erreur Supabase inconnue."} L'article existe uniquement sur cet appareil.`,
+          route: syncOk ? articleRoute : null,
+          routeLabel: syncOk ? "Voir l'article →" : null,
         });
-        setForm(EMPTY_FORM);
+        if (syncOk) setForm(EMPTY_FORM);
       } else {
         setFeedback({
-          type: syncError ? "warning" : "success",
-          message: syncError
-            ? "✓ Brouillon enregistré localement."
-            : "✓ Brouillon enregistré.",
+          type: syncOk ? "success" : "error",
+          message: syncOk
+            ? "✓ Brouillon enregistré en ligne."
+            : `✗ Brouillon non enregistré en ligne. ${syncError || "Erreur Supabase inconnue."}`,
         });
         setForm((f) => ({ ...f, id: record.id, coverUrl, coverFile: null }));
       }
@@ -353,6 +354,18 @@ export default function AssociationDashboard() {
           ⎋ Déconnexion
         </button>
       </header>
+
+      {/* Bannière Supabase non configuré */}
+      {!supabaseConfigured && (
+        <div className="db-supabase-warning">
+          <span className="db-supabase-warning-icon">⚠</span>
+          <div className="db-supabase-warning-body">
+            <strong>Supabase non configuré</strong> — Les articles ne sont enregistrés que sur cet appareil et ne seront pas visibles depuis un autre ordinateur ou téléphone.
+            <br />
+            Pour activer la publication live, ajouter les variables d'environnement <code>VITE_SUPABASE_URL</code> et <code>VITE_SUPABASE_ANON_KEY</code> dans les paramètres Vercel, puis redéployer.
+          </div>
+        </div>
+      )}
 
       {section === "articles" && <ArticlesManager onEdit={handleEditArticle} />}
       {section === "candidatures" && <RPDashboard />}
@@ -1090,13 +1103,9 @@ function ProfilesSection() {
 
 /* ── Affiche événement ──────────────────────────────────── */
 
-const AFFICHE_KEY = "woltar_affiche";
-
 function AfficheSection() {
   const fileRef = useRef(null);
-  const [affiche, setAffiche] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(AFFICHE_KEY) || "null"); } catch { return null; }
-  });
+  const [affiche, setAffiche] = useState(() => getAffiche());
   const [form, setForm] = useState({
     title: affiche?.title || "",
     summary: affiche?.summary || "",
@@ -1144,8 +1153,7 @@ function AfficheSection() {
         imageUrl,
         updatedAt: new Date().toISOString(),
       };
-      localStorage.setItem(AFFICHE_KEY, JSON.stringify(record));
-      window.dispatchEvent(new Event("woltar:affiche"));
+      await saveAffiche(record);
       setAffiche(record);
       setF("imageUrl", imageUrl);
       setF("imageFile", null);
@@ -1160,8 +1168,7 @@ function AfficheSection() {
 
   const handleClear = () => {
     if (!window.confirm("Retirer l'affiche de la page d'accueil ?")) return;
-    localStorage.removeItem(AFFICHE_KEY);
-    window.dispatchEvent(new Event("woltar:affiche"));
+    clearAffiche();
     setAffiche(null);
     setForm({ title: "", summary: "", dateStart: "", dateEnd: "", link: "", imageUrl: "", imageFile: null, preview: null });
     setSaved(false);

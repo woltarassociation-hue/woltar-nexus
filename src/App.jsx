@@ -10,14 +10,13 @@ import SetupPage from "./pages/SetupPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import TicketsPage from "./pages/TicketsPage.jsx";
-import { getPublishedByCategories, getFontStack, estimateReadTime } from "./lib/articles.js";
+import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
 import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
+import { getAffiche, loadAffiche } from "./lib/affiche.js";
 
 seedDefaultProfiles();
 import "./style.css";
-
-const CAROUSEL_CATS = ["actualites", "evenements", "prevention", "regles"];
 
 function stripHtml(html) {
   return (html || "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
@@ -32,30 +31,38 @@ const CATEGORY_META = {
   rp:          { label: "RP",         icon: "🎭" },
 };
 
-const HOME_CATEGORIES = [
+const PORTAL_CATEGORIES = [
   {
     href: "/actualites",
     icon: "✦",
     label: "Actualités",
     desc: "Mises à jour, prévention et règles communautaires.",
+    accent: "#1fa8dc",
+    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
   },
   {
     href: "/evenements",
     icon: "🎪",
     label: "Événements",
     desc: "Animations RP, concours et festivités Woltar.",
+    accent: "#1fa8dc",
+    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
   },
   {
     href: "/fanarts",
     icon: "🎨",
     label: "Fan-arts",
     desc: "Créations artistiques de la communauté.",
+    accent: "#1fa8dc",
+    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
   },
   {
     href: "/rp",
     icon: "🎭",
     label: "RP",
     desc: "Récits, intrigues et aventures de l'univers.",
+    accent: "#1fa8dc",
+    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
   },
 ];
 
@@ -115,18 +122,14 @@ function MainSite() {
   const [assocPass, setAssocPass] = useState("");
   const [assocError, setAssocError] = useState(false);
 
-  const [affiche, setAffiche] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("woltar_affiche") || "null"); } catch { return null; }
-  });
+  const [affiche, setAffiche] = useState(() => getAffiche());
   useEffect(() => {
-    const reload = () => {
-      try { setAffiche(JSON.parse(localStorage.getItem("woltar_affiche") || "null")); } catch { setAffiche(null); }
-    };
+    loadAffiche();
+    const reload = () => setAffiche(getAffiche());
     window.addEventListener("woltar:affiche", reload);
     return () => window.removeEventListener("woltar:affiche", reload);
   }, []);
 
-  // Carousel : 3 derniers articles publiés, triés par date décroissante
   const allPublishedArticles = usePublishedArticles(Object.keys(CATEGORY_META));
   const newsSlides = useMemo(() => {
     if (allPublishedArticles.length === 0) return [];
@@ -154,10 +157,9 @@ function MainSite() {
   return (
     <div className="site">
 
-
       <SiteNav />
 
-      {/* ── Hero ── */}
+      {/* ── Hero compact ── */}
       <section id="accueil" className="hero">
         <div className="hero-welcome">
           <h1 className="hero-welcome-title">Bienvenue sur Woltar</h1>
@@ -165,87 +167,32 @@ function MainSite() {
             Un système planétaire perdu dans l'espace, habité par les
             Woltariens, Woltariennes et Woltarions.
           </p>
-          <div className="hero-welcome-cats">
-            {HOME_CATEGORIES.map((c) => (
-              <a key={c.href} href={c.href} className="hero-cat-pill">
-                {c.icon} {c.label}
-              </a>
-            ))}
+          <div className="hero-cta-row">
+            <Link to="/actualites" className="hero-cta-btn hero-cta-btn--primary">
+              Entrer dans l'univers
+            </Link>
+            <Link to="/evenements" className="hero-cta-btn hero-cta-btn--secondary">
+              Découvrir les événements
+            </Link>
           </div>
         </div>
-
-        {newsSlides.length > 0 && (
-          <div className="hero-content">
-            <Carousel
-              slides={newsSlides}
-              currentIndex={currentNewsIndex}
-              setCurrentIndex={setCurrentNewsIndex}
-            />
-          </div>
-        )}
       </section>
 
-      {/* ── Événement à la une (toujours visible) ── */}
+      {/* ── Événement à la une ── */}
       <EventSpotlight affiche={affiche} articles={allPublishedArticles} />
 
-      {/* ── Catégories en vedette ── */}
-      <section className="section home-categories-section">
-        <h2>Explorez l'univers Woltar</h2>
-        <div className="home-cat-grid">
-          {HOME_CATEGORIES.map((cat) => (
-            <a key={cat.href} href={cat.href} className="home-cat-card">
-              <span className="home-cat-icon">{cat.icon}</span>
-              <span className="home-cat-label">{cat.label}</span>
-              <span className="home-cat-desc">{cat.desc}</span>
-              <span className="home-cat-cta">Voir les articles →</span>
-            </a>
-          ))}
-        </div>
-      </section>
+      {/* ── Carousel Band ── */}
+      <CarouselBand
+        slides={newsSlides}
+        currentIndex={currentNewsIndex}
+        setCurrentIndex={setCurrentNewsIndex}
+      />
 
-      {/* ── Derniers articles (strip horizontal) ── */}
-      <LatestArticlesStrip articles={allPublishedArticles} />
+      {/* ── Derniers articles (grille éditoriale) ── */}
+      <LatestArticlesGrid articles={allPublishedArticles} />
 
-      {/* ── Histoire ── */}
-      <Section id="histoire" title="Woltar et son histoire">
-        <WorkInProgress />
-      </Section>
-
-      {/* ── Événements ── */}
-      <Section id="events" title="Événements">
-        <div className="event-box">
-          <h3 className="event-box-title">Événement officiel</h3>
-          <div className="cards-grid">
-            <Card title="Animations RP" text="Scènes, intrigues et défis narratifs." />
-            <Card title="Concours" text="Créations, fan-arts et participations." />
-            <Card
-              title="Formulaire RP 2026"
-              text="Participez à l'événement Woltar 2026."
-              onClick={() => navigate("/evenements/formulaires")}
-              isClickable
-            />
-          </div>
-        </div>
-
-        <div className="event-box">
-          <h3 className="event-box-title">Événements joueurs</h3>
-          <div className="cards-grid">
-            <Card title="Galerie" text="Espace dédié aux créations des joueurs." />
-            <Card title="Annonces" text="Événements et activités communautaires." />
-          </div>
-        </div>
-
-        <div className="section-see-more">
-          <a href="/evenements" className="section-see-more-btn">
-            Voir tous les articles Événements →
-          </a>
-        </div>
-      </Section>
-
-      {/* ── Équipe ── */}
-      <Section id="equipes" title="L'équipe Woltar">
-        <WorkInProgress />
-      </Section>
+      {/* ── Portail catégories ── */}
+      <CategoriesPortal />
 
       {/* ── Association ── */}
       <Section id="association" title="Espace association">
@@ -310,12 +257,11 @@ function MainSite() {
   );
 }
 
-/* ── Événement à la une — toujours visible ───────────────── */
+/* ── Événement à la une ───────────────────────────────────── */
 
 function EventSpotlight({ affiche, articles }) {
   const navigate = useNavigate();
 
-  // Priorité 1 : affiche manuelle avec image
   if (affiche?.imageUrl) {
     return (
       <div className="event-spotlight">
@@ -329,7 +275,7 @@ function EventSpotlight({ affiche, articles }) {
             />
           </div>
           <div className="event-spotlight-body">
-            <span className="event-spotlight-label">Événement à la une</span>
+            <span className="event-spotlight-label">🎪 Événement à la une</span>
             {affiche.title && <h2 className="event-spotlight-title">{affiche.title}</h2>}
             {affiche.summary && <p className="event-spotlight-summary">{affiche.summary}</p>}
             {(affiche.dateStart || affiche.dateEnd) && (
@@ -351,7 +297,6 @@ function EventSpotlight({ affiche, articles }) {
     );
   }
 
-  // Priorité 2 : dernier article publié de la catégorie "evenements"
   const latest = articles
     .filter((a) => a.category === "evenements")
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0] || null;
@@ -381,7 +326,7 @@ function EventSpotlight({ affiche, articles }) {
             )}
           </div>
           <div className="event-spotlight-body">
-            <span className="event-spotlight-label">Événement à la une</span>
+            <span className="event-spotlight-label">🎪 Événement à la une</span>
             <h2
               className="event-spotlight-title"
               style={{ fontFamily: fontStack, color: latest.titleColor || undefined }}
@@ -405,92 +350,169 @@ function EventSpotlight({ affiche, articles }) {
     );
   }
 
-  // Priorité 3 : rectangle blanc placeholder (toujours présent)
-  return (
-    <div className="event-spotlight">
-      <div className="event-spotlight-inner event-spotlight-inner--empty">
-        <div className="event-spotlight-placeholder">
-          <span className="event-spotlight-placeholder-icon">🎪</span>
-          <p className="event-spotlight-placeholder-title">Événement à la une</p>
-          <p className="event-spotlight-placeholder-sub">Bientôt disponible</p>
-        </div>
-      </div>
-    </div>
-  );
+  return null;
 }
 
-/* ── Strip horizontal — derniers articles publiés ────────── */
+/* ── Carousel Band — section standalone ──────────────────── */
 
-function LatestArticlesStrip({ articles }) {
-  const latest = useMemo(() => {
-    return [...articles]
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 10);
-  }, [articles]);
-
+function CarouselBand({ slides, currentIndex, setCurrentIndex }) {
   return (
-    <section className="section latest-strip-section">
-      <div className="latest-strip-header">
-        <h2>Derniers articles publiés</h2>
-        <Link to="/actualites" className="latest-strip-all">Voir tout →</Link>
+    <section className="carousel-band">
+      <div className="carousel-band-eyebrow">
+        <span>✦ À la une</span>
       </div>
-
-      {latest.length === 0 ? (
-        <div className="latest-strip-empty">
-          <span>✦</span>
-          <p>Les articles apparaîtront ici une fois publiés.</p>
-        </div>
-      ) : (
-        <div className="latest-strip-track">
-          {latest.map((article) => (
-            <LatestMiniCard key={article.id} article={article} />
-          ))}
-        </div>
-      )}
+      <div className="carousel-band-track">
+        {slides.length > 0 ? (
+          <Carousel slides={slides} currentIndex={currentIndex} setCurrentIndex={setCurrentIndex} />
+        ) : (
+          <div className="carousel-band-empty">
+            <span className="carousel-band-empty-icon">✦</span>
+            <p>Les articles à la une apparaîtront ici.</p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
 
-function LatestMiniCard({ article }) {
+/* ── Latest Articles Grid — grille éditoriale ────────────── */
+
+function LatestArticlesGrid({ articles }) {
+  const latest = useMemo(() => {
+    return [...articles]
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 7);
+  }, [articles]);
+
+  if (latest.length === 0) return null;
+
+  const [featured, ...rest] = latest;
+
+  return (
+    <section className="section lag-section">
+      <div className="lag-header">
+        <h2>Derniers articles</h2>
+        <Link to="/actualites" className="lag-see-all">Tout voir →</Link>
+      </div>
+      <div className="lag-grid">
+        <LatestFeaturedCard article={featured} />
+        <div className="lag-small-grid">
+          {rest.slice(0, 6).map((a) => (
+            <LatestSmallCard key={a.id} article={a} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function LatestFeaturedCard({ article }) {
   const navigate = useNavigate();
   const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
   const fontStack = getFontStack(article.font);
+  const href = `/${article.category}/${article.slug}`;
 
   return (
     <article
-      className="latest-card"
-      onClick={() => navigate(`/${article.category}/${article.slug}`)}
+      className="lag-featured"
+      onClick={() => navigate(href)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && navigate(`/${article.category}/${article.slug}`)}
+      onKeyDown={(e) => e.key === "Enter" && navigate(href)}
     >
-      <div className="latest-card-thumb">
+      <div className="lag-featured-img">
         {article.coverUrl ? (
           <img src={article.coverUrl} alt={article.title} />
         ) : (
-          <div className="latest-card-thumb-fallback">{meta.icon}</div>
+          <div className="lag-featured-fallback">{meta.icon}</div>
         )}
+        <div className="lag-featured-overlay" />
       </div>
-      <div className="latest-card-body">
-        <span className="latest-card-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
+      <div className="lag-featured-body">
+        <span className="lag-featured-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
           {meta.icon} {meta.label}
         </span>
-        <h3
-          className="latest-card-title"
-          style={{ fontFamily: fontStack, color: article.titleColor || "#1a1020" }}
-        >
+        <h3 className="lag-featured-title" style={{ fontFamily: fontStack }}>
           {article.title}
         </h3>
-        <div className="latest-card-footer">
-          <span className="latest-card-date">
-            {new Date(article.createdAt).toLocaleDateString("fr-FR", {
-              day: "numeric", month: "short",
-            })}
+        {article.summary && (
+          <p className="lag-featured-summary">{article.summary}</p>
+        )}
+        <div className="lag-featured-foot">
+          <span className="lag-featured-date">
+            {new Date(article.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
           </span>
-          <span className="latest-card-read">Lire →</span>
+          <span className="lag-featured-read">Lire →</span>
         </div>
       </div>
     </article>
+  );
+}
+
+function LatestSmallCard({ article }) {
+  const navigate = useNavigate();
+  const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
+  const href = `/${article.category}/${article.slug}`;
+
+  return (
+    <article
+      className="lag-small"
+      onClick={() => navigate(href)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && navigate(href)}
+    >
+      {article.coverUrl && (
+        <div className="lag-small-thumb">
+          <img src={article.coverUrl} alt={article.title} />
+        </div>
+      )}
+      <div className="lag-small-body">
+        <span className="lag-small-cat" style={{ color: article.accentColor || "#1fa8dc" }}>
+          {meta.icon} {meta.label}
+        </span>
+        <h4 className="lag-small-title">{article.title}</h4>
+        <span className="lag-small-date">
+          {new Date(article.createdAt).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}
+        </span>
+      </div>
+    </article>
+  );
+}
+
+/* ── Portail catégories ───────────────────────────────────── */
+
+function CategoriesPortal() {
+  return (
+    <section className="portal-section">
+      <div className="portal-inner">
+        <div className="portal-header">
+          <h2 className="portal-title">Explorez l'univers Woltar</h2>
+          <p className="portal-sub">Plongez dans les différentes facettes de la communauté</p>
+        </div>
+        <div className="portal-grid">
+          {PORTAL_CATEGORIES.map((cat) => (
+            <a
+              key={cat.href}
+              href={cat.href}
+              className="portal-card"
+              style={{ background: cat.bg }}
+            >
+              <div
+                className="portal-card-glow"
+                style={{ background: `radial-gradient(circle at 30% 40%, ${cat.accent}44 0%, transparent 65%)` }}
+              />
+              <span className="portal-card-icon">{cat.icon}</span>
+              <div className="portal-card-body">
+                <span className="portal-card-label" style={{ color: cat.accent }}>{cat.label}</span>
+                <p className="portal-card-desc">{cat.desc}</p>
+              </div>
+              <span className="portal-card-arrow">→</span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -502,40 +524,6 @@ function Section({ id, title, children }) {
       <h2>{title}</h2>
       <div>{children}</div>
     </section>
-  );
-}
-
-function WorkInProgress() {
-  return (
-    <div className="work-in-progress">
-      <div className="work-in-progress-panel">
-        <div className="wip-glow-red" />
-        <div className="wip-glow-blue" />
-        <div className="wip-grid-lines" />
-        <div className="work-in-progress-content">
-          <span className="work-in-progress-icon">⚙</span>
-          <div className="work-in-progress-title">Travaux en cours</div>
-          <div className="work-in-progress-text">
-            Cette section est en cours de construction.<br />
-            L'univers Woltar continue d'évoluer.
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Card({ title, text, onClick, isClickable }) {
-  return (
-    <div
-      className="info-card"
-      onClick={onClick}
-      style={{ cursor: isClickable ? "pointer" : "default" }}
-    >
-      <h3>{title}</h3>
-      <p>{text}</p>
-      {isClickable && <span className="info-card-cta">Voir →</span>}
-    </div>
   );
 }
 
