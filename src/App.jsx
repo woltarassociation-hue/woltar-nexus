@@ -14,6 +14,7 @@ import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
 import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
 import { getAffiche, loadAffiche } from "./lib/affiche.js";
+import { getSettings, settingsReady } from "./lib/settings.js";
 
 seedDefaultProfiles();
 import "./style.css";
@@ -122,6 +123,14 @@ function MainSite() {
   const [assocPass, setAssocPass] = useState("");
   const [assocError, setAssocError] = useState(false);
 
+  const [settings, setSettings] = useState(() => getSettings());
+  useEffect(() => {
+    settingsReady.then(() => setSettings(getSettings()));
+    const refresh = () => setSettings(getSettings());
+    window.addEventListener("woltar:settings", refresh);
+    return () => window.removeEventListener("woltar:settings", refresh);
+  }, []);
+
   const [affiche, setAffiche] = useState(() => getAffiche());
   useEffect(() => {
     loadAffiche();
@@ -129,6 +138,20 @@ function MainSite() {
     window.addEventListener("woltar:affiche", reload);
     return () => window.removeEventListener("woltar:affiche", reload);
   }, []);
+
+  if (settings.maintenance_mode) {
+    return (
+      <div className="maintenance-page">
+        <div className="maintenance-inner">
+          <span className="maintenance-icon">🔧</span>
+          <h1 className="maintenance-title">{settings.site_name || "Woltar.net"}</h1>
+          <p className="maintenance-msg">
+            {settings.maintenance_message || "Le site est temporairement en maintenance. Revenez bientôt !"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const allPublishedArticles = usePublishedArticles(Object.keys(CATEGORY_META));
   const newsSlides = useMemo(() => {
@@ -162,17 +185,24 @@ function MainSite() {
       {/* ── Hero compact ── */}
       <section id="accueil" className="hero">
         <div className="hero-welcome">
-          <h1 className="hero-welcome-title">Bienvenue sur Woltar</h1>
+          <h1 className="hero-welcome-title">
+            {settings.hero_title || "Bienvenue sur Woltar"}
+          </h1>
           <p className="hero-welcome-sub">
-            Un système planétaire perdu dans l'espace, habité par les
-            Woltariens, Woltariennes et Woltarions.
+            {settings.hero_subtitle || "Un système planétaire perdu dans l'espace, habité par les Woltariens, Woltariennes et Woltarions."}
           </p>
           <div className="hero-cta-row">
-            <Link to="/actualites" className="hero-cta-btn hero-cta-btn--primary">
-              Entrer dans l'univers
+            <Link
+              to={settings.cta_primary?.href || "/actualites"}
+              className="hero-cta-btn hero-cta-btn--primary"
+            >
+              {settings.cta_primary?.label || "Entrer dans l'univers"}
             </Link>
-            <Link to="/evenements" className="hero-cta-btn hero-cta-btn--secondary">
-              Découvrir les événements
+            <Link
+              to={settings.cta_secondary?.href || "/evenements"}
+              className="hero-cta-btn hero-cta-btn--secondary"
+            >
+              {settings.cta_secondary?.label || "Découvrir les événements"}
             </Link>
           </div>
         </div>

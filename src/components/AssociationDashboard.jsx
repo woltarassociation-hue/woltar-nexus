@@ -11,6 +11,10 @@ import { getSubcategories } from "../lib/subcategories";
 import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv, FIELD_TYPES, ALL_RP_STATS, EMPTY_FORM_V2 } from "../lib/forms";
 import { getTickets, saveTicket, deleteTicket, updateTicketStatus, getDiscordConfig, saveDiscordConfig, sendDiscordNotification } from "../lib/tickets";
 import RichTextEditor from "./RichTextEditor";
+import ParametresSection  from "./admin/ParametresSection";
+import CategoriesSection  from "./admin/CategoriesSection";
+import RolesSection       from "./admin/RolesSection";
+import MediathequeSection from "./admin/MediathequeSection";
 
 const stripHtml = (html) =>
   (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -126,6 +130,7 @@ const EMPTY_FORM = {
   coverUrl: null,
   coverMode: "banner",
   status: "draft",
+  scheduledAt: "",
   font: "Playfair Display",
   titleFont: "Playfair Display",
   bodyFont: "Merriweather",
@@ -231,6 +236,7 @@ export default function AssociationDashboard() {
         coverUrl,
         coverMode: form.coverMode || "banner",
         status,
+        scheduledAt: status === "scheduled" ? (form.scheduledAt || null) : null,
         font: form.font,
         titleFont: form.titleFont,
         bodyFont: form.bodyFont,
@@ -293,7 +299,7 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP", tickets: "Tickets" }[section]}
+            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP", tickets: "Tickets", parametres: "Paramètres", categories: "Catégories", roles: "Rôles & Permissions", mediatheque: "Médiathèque" }[section]}
           </span>
         </div>
         <div className="db-header-nav">
@@ -345,6 +351,31 @@ export default function AssociationDashboard() {
           >
             🎫 Tickets
           </button>
+          <div className="db-nav-sep" />
+          <button
+            className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("parametres")}
+          >
+            ⚙ Paramètres
+          </button>
+          <button
+            className={`db-nav-btn${section === "categories" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("categories")}
+          >
+            🗂 Catégories
+          </button>
+          <button
+            className={`db-nav-btn${section === "roles" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("roles")}
+          >
+            🔐 Rôles
+          </button>
+          <button
+            className={`db-nav-btn${section === "mediatheque" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("mediatheque")}
+          >
+            🖼 Médiathèque
+          </button>
         </div>
         <button
           className="db-logout-btn"
@@ -367,13 +398,17 @@ export default function AssociationDashboard() {
         </div>
       )}
 
-      {section === "articles" && <ArticlesManager onEdit={handleEditArticle} />}
+      {section === "articles"    && <ArticlesManager onEdit={handleEditArticle} />}
       {section === "candidatures" && <RPDashboard />}
-      {section === "affiche" && <AfficheSection />}
-      {section === "profils" && <ProfilesSection />}
-      {section === "membres" && <MembresSection />}
-      {section === "formulaires" && <FormulairesManager />}
-      {section === "tickets" && <TicketsManager />}
+      {section === "affiche"      && <AfficheSection />}
+      {section === "profils"      && <ProfilesSection />}
+      {section === "membres"      && <MembresSection />}
+      {section === "formulaires"  && <FormulairesManager />}
+      {section === "tickets"      && <TicketsManager />}
+      {section === "parametres"   && <ParametresSection />}
+      {section === "categories"   && <CategoriesSection />}
+      {section === "roles"        && <RolesSection />}
+      {section === "mediatheque"  && <MediathequeSection />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -630,7 +665,7 @@ export default function AssociationDashboard() {
                 onClick={() => handleSave("draft")}
                 disabled={!canSave}
               >
-                {saving ? "Enregistrement…" : "Enregistrer le brouillon"}
+                {saving ? "Enregistrement…" : "Brouillon"}
               </button>
               <button
                 className="db-btn db-btn--publish"
@@ -639,9 +674,26 @@ export default function AssociationDashboard() {
               >
                 {saving ? "Publication…" : "Publier →"}
               </button>
+              <button
+                className="db-btn db-btn--schedule"
+                onClick={() => handleSave("scheduled")}
+                disabled={!canSave || !form.scheduledAt}
+                title={!form.scheduledAt ? "Choisir une date de publication ci-dessous" : ""}
+              >
+                📅 Programmer
+              </button>
               <button className="db-btn db-btn--cancel" onClick={handleCancel}>
                 Annuler
               </button>
+            </div>
+            <div className="db-schedule-row">
+              <label className="db-label" style={{ margin: 0 }}>Publication programmée</label>
+              <input
+                type="datetime-local"
+                className="db-input db-input--schedule"
+                value={form.scheduledAt || ""}
+                onChange={(e) => set("scheduledAt", e.target.value)}
+              />
             </div>
           </div>
         </main>

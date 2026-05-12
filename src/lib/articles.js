@@ -137,8 +137,12 @@ export async function toggleFeatured(id) {
 }
 
 export function getPublishedByCategories(categories) {
+  const now = new Date();
   return getAllArticles().filter(
-    (a) => a.status === "published" && categories.includes(a.category)
+    (a) =>
+      categories.includes(a.category) &&
+      (a.status === "published" ||
+        (a.status === "scheduled" && a.scheduledAt && new Date(a.scheduledAt) <= now))
   );
 }
 
