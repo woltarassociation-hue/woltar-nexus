@@ -47,26 +47,24 @@ body::before {
 
 /* ─── NAVBAR ─── */
 .navbar {
-  position: fixed;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  width: min(1100px, 94%);
-  padding: 0 16px;
+  /* Panneau en flux normal — 12px au-dessus du footer */
+  position: relative;
+  margin: 0 auto 12px;
+  width: min(1180px, 94%);
+  padding: 0 20px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: 8px;
 
-  /* Panneau bleu/cyan façon jeu Woltar 2000s */
-  background: linear-gradient(180deg, #3ab8e0 0%, #1e9ecf 50%, #1487b5 100%);
+  /* Bleu cyan 10% plus doux */
+  background: linear-gradient(180deg, #5ec8ec 0%, #36b4d8 50%, #2299be 100%);
   border: 2.5px solid #ffffff;
   border-radius: 14px;
   box-shadow:
-    0 6px 28px rgba(0, 60, 100, 0.55),
+    0 6px 28px rgba(0, 50, 90, 0.42),
     0 2px 0 rgba(255,255,255,0.55) inset,
-    0 -1px 0 rgba(0,0,0,0.18) inset;
+    0 -1px 0 rgba(0,0,0,0.14) inset;
 }
 
 /* reflet lumineux en haut du panneau */
@@ -77,7 +75,7 @@ body::before {
   left: 0;
   right: 0;
   height: 46%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.00) 100%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.20) 0%, rgba(255,255,255,0.00) 100%);
   border-radius: 12px 12px 0 0;
   pointer-events: none;
 }
@@ -116,20 +114,21 @@ body::before {
   transform: scale(1.04);
 }
 
-/* Mobile dropdown */
+/* Mobile dropdown — s'ouvre vers le HAUT (navbar en bas de page) */
 .nav-mobile {
   position: absolute;
-  top: calc(100% + 8px);
+  bottom: calc(100% + 8px);
+  top: auto;
   left: 0;
   right: 0;
-  background: linear-gradient(180deg, #2fb0da 0%, #1487b5 100%);
+  background: linear-gradient(0deg, #2fb0da 0%, #1d9ec8 100%);
   border: 2px solid rgba(255,255,255,0.75);
   border-radius: 12px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 8px 28px rgba(0,50,90,0.50);
+  box-shadow: 0 -6px 24px rgba(0,50,90,0.45);
 }
 
 .nav-link {
@@ -211,11 +210,28 @@ body::before {
 /* ─── HERO ─── */
 .hero {
   min-height: 0;
-  padding: 168px 4% 56px;
+  padding: 56px 4% 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 36px;
+  gap: 28px;
+}
+
+.hero-top-logo {
+  text-align: center;
+  line-height: 0;
+}
+
+.hero-top-logo-img {
+  height: 130px;
+  filter: drop-shadow(0 4px 18px rgba(139,0,0,0.38));
+  transition: transform 0.3s ease, filter 0.3s ease;
+  animation: hero-fade-up 0.9s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hero-top-logo-img:hover {
+  transform: scale(1.05);
+  filter: drop-shadow(0 6px 24px rgba(31,168,220,0.50));
 }
 
 @keyframes hero-fade-up {
@@ -763,7 +779,7 @@ body::before {
 footer:not(.site-footer) {
   position: relative;
   overflow: hidden;
-  margin-top: 70px;
+  margin-top: 0;
   padding: 70px 20px 42px;
   text-align: center;
   color: rgba(255,255,255,0.65);
@@ -988,53 +1004,72 @@ footer:not(.site-footer) p {
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 950px) {
+  /* Navbar en bas : scroll horizontal, pas de hamburger */
   .navbar {
-    top: 10px;
-    left: 12px;
-    right: 12px;
-    width: auto;
-    transform: none;
-    padding: 6px 14px;
-    border-radius: 24px;
-    grid-template-columns: auto 1fr auto;
-    grid-template-areas: "hamburger logo .";
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: visible;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    width: calc(100% - 24px);
+    margin: 0 12px 12px;
+    /* Cache la scrollbar mais garde le scroll tactile */
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
   }
+  .navbar::-webkit-scrollbar { display: none; }
 
-  .nav-hamburger { grid-area: hamburger; order: -1; }
-  .nav-brand     { grid-area: logo; justify-self: start; }
-
+  /* On affiche tous les liens en ligne */
   .nav-left,
   .nav-right {
+    display: contents; /* enfants directs dans le flex parent */
+  }
+
+  /* Hamburger inutile : nav en bas, tout visible via scroll */
+  .nav-hamburger {
     display: none;
   }
 
-  .nav-hamburger {
-    display: flex;
+  /* Logo plus petit, ne shrink pas */
+  .nav-brand {
+    flex-shrink: 0;
+    order: -1; /* logo en premier */
   }
 
+  .nav-logo {
+    height: 56px;
+  }
+
+  /* Touch targets 44px minimum */
   .nav-link {
-    justify-content: flex-start;
-    padding: 11px 16px;
-    border-radius: 12px;
-    width: 100%;
-    font-size: 14px;
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 13px;
+    white-space: nowrap;
+    justify-content: center;
   }
 
-  /* Rétablir la taille normale du bouton Admin en mobile */
   .nav-link--admin {
-    font-size: 14px;
-    padding: 11px 16px;
+    font-size: 13px;
+    padding: 10px 14px;
     text-transform: none;
     letter-spacing: 0;
   }
 
-  .nav-logo {
-    height: 74px;
+  /* Hero : logo du haut + bienvenue */
+  .hero-top-logo-img {
+    height: 96px;
   }
 
   .hero {
-    padding: 110px 4% 56px;
-    gap: 28px;
+    padding: 40px 4% 48px;
+    gap: 22px;
   }
 
   .hero-welcome {
@@ -1099,9 +1134,13 @@ footer:not(.site-footer) p {
 }
 
 @media (max-width: 600px) {
+  .hero-top-logo-img {
+    height: 80px;
+  }
+
   .hero {
-    padding: 100px 4% 44px;
-    gap: 24px;
+    padding: 28px 4% 40px;
+    gap: 18px;
   }
 
   .hero-welcome {

@@ -180,10 +180,11 @@ function MainSite() {
   return (
     <div className="site">
 
-      <SiteNav />
-
-      {/* ── Hero compact ── */}
+      {/* ── Hero compact — logo au sommet ── */}
       <section id="accueil" className="hero">
+        <div className="hero-top-logo">
+          <img src="/logo_woltar.png" alt="Woltar" className="hero-top-logo-img" />
+        </div>
         <div className="hero-welcome">
           <h1 className="hero-welcome-title">
             {settings.hero_title || "Bienvenue sur Woltar"}
@@ -223,6 +224,9 @@ function MainSite() {
 
       {/* ── Portail catégories ── */}
       <CategoriesPortal />
+
+      {/* ── Panneau nav — sous les catégories, 12px au-dessus du footer ── */}
+      <SiteNav />
 
       {/* ── Association ── */}
       <Section id="association" title="Espace association">
