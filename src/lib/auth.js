@@ -32,7 +32,7 @@ export async function signInFromMembers(username, password) {
   let data, queryError;
   try {
     ({ data, error: queryError } = await withTimeout(
-      supabase.from("members").select("id, pseudo, password, role").eq("pseudo", pseudo).single()
+      supabase.from("members").select("id, pseudo, password, role").eq("pseudo", pseudo).maybeSingle()
     ));
   } catch (e) {
     console.log("[Auth] Erreur requête:", e.message);

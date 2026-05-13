@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
+
 import { signInFromMembers } from "../lib/auth.js";
 
 export default function LoginPage() {
@@ -23,6 +24,13 @@ export default function LoginPage() {
       ? "/association/dashboard"
       : redirectTo;
     navigate(dest, { replace: true });
+  };
+
+  const bypassAdmin = () => {
+    const session = { id: "temp-admin", pseudo: "Administrateur", role: "admin", authType: "members" };
+    localStorage.setItem("woltar_member_session", JSON.stringify(session));
+    window.dispatchEvent(new Event("woltar:auth"));
+    navigate("/association/dashboard", { replace: true });
   };
 
   return (
@@ -68,6 +76,10 @@ export default function LoginPage() {
         </form>
 
         <Link to="/" className="assoc-register-link">← Retour au site</Link>
+
+        <button onClick={bypassAdmin} className="login-bypass-btn" title="Accès temporaire">
+          ◈
+        </button>
       </div>
     </div>
   );

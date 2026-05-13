@@ -8936,6 +8936,23 @@ footer:not(.site-footer) p {
   .adm-user-roles-assigned { justify-content: flex-start; }
 }
 
+/* ── Login bypass btn (accès temporaire admin) ── */
+.login-bypass-btn {
+  position: absolute;
+  bottom: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: rgba(31, 168, 220, 0.35);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: color 0.15s;
+  line-height: 1;
+}
+.login-bypass-btn:hover { color: #1fa8dc; }
+
 /* ── Login page ── */
 .login-page {
   min-height: 100vh;
