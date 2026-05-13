@@ -9569,24 +9569,33 @@ footer:not(.site-footer) p {
   font-family: Verdana, sans-serif;
 }
 
-/* Quand le panel est directement dans le dashboard, il doit scroller et laisser le fond visible */
+/* Quand le panel est directement dans le dashboard : fenêtre flottante centrée */
 .dashboard > .rpx-panel {
   flex: 1;
   overflow-y: auto;
-  margin: 0 20px 20px;
+  width: calc(100% - 48px);
+  max-width: 1360px;
+  margin: 14px auto 20px;
   min-height: 0;
-  border-radius: 8px;
-  box-shadow: 0 4px 24px rgba(100,0,0,0.18);
+  border-radius: 14px;
+  box-shadow: 0 8px 48px rgba(100,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
 }
 
-/* Panel interne (formulaires imbriqués) */
+/* Panel interne (formulaires imbriqués) — carte blanche */
 .rpx-panel--inner {
-  background: rgba(255,255,255,0.18);
-  border: 2px solid rgba(255,255,255,0.35);
-  border-radius: 6px;
+  background: #fff;
+  border: 2px solid #cce8f4;
+  border-radius: 8px;
   padding: 20px;
   margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
+/* Texte sombre dans les cartes blanches internes */
+.rpx-panel--inner .rpx-label           { color: #8b0000; }
+.rpx-panel--inner .rpx-section-title   { color: #8b0000; border-bottom-color: #cce8f4; }
+.rpx-panel--inner .rpx-section-title::before { color: #1fa8dc; }
+.rpx-panel--inner .rpx-feedback--success { background: rgba(26,128,64,0.1); color: #0f6030; border-color: rgba(26,128,64,0.4); }
+.rpx-panel--inner .rpx-feedback--error   { background: rgba(200,0,0,0.08); color: #8b0000; border-color: rgba(200,0,0,0.3); }
 
 /* Header row */
 .rpx-panel-header {
@@ -10352,15 +10361,133 @@ footer:not(.site-footer) p {
 .rpx-color-row { display: flex; gap: 8px; align-items: center; }
 .rpx-color-pick { width: 36px; height: 36px; border-radius: 4px; border: 1.5px solid #b8d8e8; cursor: pointer; padding: 2px; background: #fff; }
 
+/* ── Power BI–style KPI strip ─────────────────────────────────── */
+.rpx-kpi-strip {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.rpx-kpi-mini {
+  flex: 1;
+  min-width: 100px;
+  background: #fff;
+  border: 2px solid #cce8f4;
+  border-top: 4px solid var(--kpi-color, #1fa8dc);
+  border-radius: 6px;
+  padding: 12px 14px 10px;
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.07);
+  transition: transform 0.1s, box-shadow 0.1s;
+  cursor: default;
+}
+.rpx-kpi-mini:hover {
+  transform: translate(-1px,-1px);
+  box-shadow: 3px 3px 0 0 rgba(0,0,0,0.12);
+}
+.rpx-kpi-mini--danger { --kpi-color: #8b0000; }
+.rpx-kpi-mini--success { --kpi-color: #1a8040; }
+.rpx-kpi-mini--purple { --kpi-color: #7b3fa0; }
+.rpx-kpi-mini--grey { --kpi-color: #5a7a8a; }
+.rpx-kpi-mini__value {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--kpi-color, #1fa8dc);
+  line-height: 1;
+  display: block;
+}
+.rpx-kpi-mini__label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: #5a7a8a;
+  font-weight: 700;
+  margin-top: 4px;
+  display: block;
+}
+.rpx-kpi-mini__bar {
+  height: 3px;
+  background: rgba(31,168,220,0.12);
+  border-radius: 2px;
+  margin-top: 10px;
+  overflow: hidden;
+}
+.rpx-kpi-mini__bar-fill {
+  height: 100%;
+  background: var(--kpi-color, #1fa8dc);
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+
+/* ── Stats 2-col card grid ────────────────────────────────────── */
+.rpx-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.rpx-stats-card {
+  background: #fff;
+  border: 2px solid #cce8f4;
+  border-radius: 8px;
+  padding: 18px 20px;
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.07);
+}
+.rpx-stats-card__title {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: #8b0000;
+  font-weight: 700;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e8f4fb;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.rpx-stat-metric {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f8fc;
+  font-size: 12px;
+  font-family: Verdana, sans-serif;
+}
+.rpx-stat-metric:last-child { border-bottom: none; }
+.rpx-stat-metric__label { color: #5a7a8a; }
+.rpx-stat-metric__value { font-weight: 700; color: #1a2535; }
+.rpx-stat-metric__value--accent { color: #1fa8dc; }
+.rpx-stat-metric__value--danger { color: #8b0000; }
+.rpx-stat-bar {
+  height: 4px;
+  background: #e8f4fb;
+  border-radius: 2px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+.rpx-stat-bar__fill {
+  height: 100%;
+  background: #1fa8dc;
+  border-radius: 2px;
+  transition: width 1s ease;
+}
+.rpx-stat-bar__fill--danger { background: #8b0000; }
+.rpx-stat-bar__fill--success { background: #1a8040; }
+
 /* Responsive */
 @media (max-width: 900px) {
+  .dashboard > .rpx-panel { width: calc(100% - 24px); margin: 10px auto 16px; border-radius: 10px; }
   .rpx-form-grid--2 { grid-template-columns: 1fr; }
   .rpx-form-grid-2  { grid-template-columns: 1fr; }
   .rpx-roles-layout { grid-template-columns: 1fr; }
   .rpx-style-grid { grid-template-columns: 1fr 1fr; }
   .rpx-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .rpx-stats-grid { grid-template-columns: 1fr; }
+  .rpx-kpi-mini { min-width: 80px; }
 }
 @media (max-width: 600px) {
+  .dashboard > .rpx-panel { width: calc(100% - 16px); margin: 8px auto 12px; border-radius: 8px; }
   .rpx-panel { padding: 16px; }
   .rpx-grid { grid-template-columns: 1fr 1fr; }
   .rpx-style-grid { grid-template-columns: 1fr; }
@@ -10368,5 +10495,132 @@ footer:not(.site-footer) p {
   .rpx-media-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
   .rpx-kpi-row { flex-direction: column; }
   .rpx-kpi-inline { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.2); }
+  .rpx-kpi-strip { gap: 6px; }
+  .rpx-kpi-mini { min-width: calc(50% - 3px); flex: none; }
+  .rpx-stats-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SECTIONS ADMIN — Panneaux flottants blancs (non-rpx)
+   Couvre : articles · candidatures · affiche · profils · membres
+            formulaires · tickets · paramètres · studio
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Panneau flottant blanc commun ── */
+.artmgr-wrap,
+.rp-dash,
+.affiche-section,
+.prof-section,
+.mbr-section,
+.adm-wrap {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  box-sizing: border-box;
+  width: calc(100% - 48px);
+  max-width: 1360px;
+  margin: 14px auto 20px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 8px 48px rgba(100,0,0,0.22), 0 2px 8px rgba(0,0,0,0.10);
+}
+
+/* Padding individuel */
+.artmgr-wrap    { padding: 24px 28px 40px; }
+.rp-dash        { padding: 24px 28px 48px; }
+.affiche-section{ padding: 24px 28px 48px; }
+.prof-section   { padding: 24px 28px 48px; }
+.mbr-section    { padding: 24px 28px 48px; }
+.adm-wrap       { padding: 24px 28px 40px; }
+
+/* artmgr-sidebar sticky : dans le panneau scrollable */
+.artmgr-sidebar { top: 20px; }
+
+/* ── Studio (db-body) — panneau pleine hauteur ── */
+.db-body {
+  width: calc(100% - 48px);
+  margin: 8px auto 0;
+  border-radius: 12px 12px 0 0;
+  overflow: hidden;
+  box-shadow: 0 -2px 20px rgba(100,0,0,0.12);
+}
+
+/* ── Correction Paramètres (adm-*) — suppression thème sombre ── */
+.adm-title {
+  color: #8b0000;
+}
+
+.adm-group {
+  background: #f5f9fc;
+  border: 1.5px solid #cce8f4;
+  border-radius: 10px;
+  padding: 18px 20px 14px;
+  margin-bottom: 16px;
+  box-shadow: none;
+}
+
+.adm-group-label {
+  color: #8b0000;
+}
+
+.adm-toggle-label {
+  color: #1a2535;
+  font-size: 13px;
+}
+
+.adm-badge--off {
+  background: rgba(90,122,138,0.1);
+  color: #5a7a8a;
+  border: 1px solid #b8d8e8;
+}
+
+.adm-badge--ok {
+  background: rgba(26,128,64,0.1);
+  color: #1a7a40;
+  border: 1px solid rgba(26,128,64,0.3);
+}
+
+.adm-badge--danger {
+  background: rgba(200,0,0,0.1);
+  color: #8b0000;
+  border: 1px solid rgba(200,0,0,0.3);
+}
+
+/* ── Responsive — panneaux non-rpx ── */
+@media (max-width: 900px) {
+  .artmgr-wrap,
+  .rp-dash,
+  .affiche-section,
+  .prof-section,
+  .mbr-section,
+  .adm-wrap {
+    width: calc(100% - 24px);
+    margin: 10px auto 16px;
+    border-radius: 10px;
+  }
+  .db-body {
+    width: calc(100% - 24px);
+    border-radius: 10px 10px 0 0;
+  }
+  .affiche-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .artmgr-wrap,
+  .rp-dash,
+  .affiche-section,
+  .prof-section,
+  .mbr-section,
+  .adm-wrap {
+    width: calc(100% - 16px);
+    margin: 8px auto 12px;
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .db-body {
+    width: calc(100% - 16px);
+    border-radius: 8px 8px 0 0;
+  }
+  .artmgr-layout { grid-template-columns: 1fr; }
 }
 
