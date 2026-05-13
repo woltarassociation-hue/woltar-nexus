@@ -7,11 +7,28 @@ import {
   toggleAnnouncement,
 } from "../../lib/popups.js";
 
+// ── Constantes ─────────────────────────────────────────────────
 const STYLE_OPTIONS = [
-  { value: "glass_cyan",   label: "Glass cyan",     desc: "Futuriste" },
-  { value: "rouge_woltar", label: "Rouge Woltar",   desc: "Premium" },
-  { value: "minimal_manga",label: "Minimal Manga",  desc: "Élégant" },
+  {
+    value: "glass_cyan",
+    label: "Glass Cyan",
+    emoji: "💠",
+    desc: "Futuriste",
+  },
+  {
+    value: "rouge_woltar",
+    label: "Rouge Woltar",
+    emoji: "🔴",
+    desc: "Premium",
+  },
+  {
+    value: "minimal_manga",
+    label: "Minimal Manga",
+    emoji: "📋",
+    desc: "Élégant",
+  },
 ];
+
 const TYPE_OPTIONS = [
   { value: "news",        label: "Actualité" },
   { value: "event",       label: "Événement" },
@@ -24,16 +41,17 @@ const EMPTY_FORM = {
   is_active: false,
 };
 
+// ── Composant principal ────────────────────────────────────────
 export default function PopupsSection() {
   const { user, hasPermission } = useAuth();
   const canManage = hasPermission("manage_popups") || hasPermission("create_popup");
 
-  const [anns, setAnns]       = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm]       = useState(EMPTY_FORM);
-  const [editId, setEditId]   = useState(null);
-  const [saving, setSaving]   = useState(false);
+  const [anns, setAnns]           = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showForm, setShowForm]   = useState(false);
+  const [form, setForm]           = useState(EMPTY_FORM);
+  const [editId, setEditId]       = useState(null);
+  const [saving, setSaving]       = useState(false);
   const [formError, setFormError] = useState("");
 
   const reload = () => {
@@ -44,20 +62,29 @@ export default function PopupsSection() {
 
   const setField = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
+  const openNew = () => {
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setFormError("");
+    setShowForm((v) => !v);
+  };
+
   const handleEdit = (ann) => {
     setForm({
-      title:        ann.title || "",
-      body:         ann.body  || "",
-      style:        ann.style || "glass_cyan",
-      type:         ann.type  || "news",
-      cta_label:    ann.cta_label   || "",
-      cta_url:      ann.cta_url     || "",
+      title:        ann.title        || "",
+      body:         ann.body         || "",
+      style:        ann.style        || "glass_cyan",
+      type:         ann.type         || "news",
+      cta_label:    ann.cta_label    || "",
+      cta_url:      ann.cta_url      || "",
       scheduled_at: ann.scheduled_at ? ann.scheduled_at.slice(0, 16) : "",
-      expires_at:   ann.expires_at  ? ann.expires_at.slice(0, 16)   : "",
-      is_active:    ann.is_active   || false,
+      expires_at:   ann.expires_at   ? ann.expires_at.slice(0, 16)   : "",
+      is_active:    ann.is_active    || false,
     });
     setEditId(ann.id);
+    setFormError("");
     setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSubmit = async (e) => {
@@ -77,11 +104,13 @@ export default function PopupsSection() {
       scheduled_at: form.scheduled_at     || null,
       expires_at:   form.expires_at       || null,
       is_active:    form.is_active,
-      created_by:   user?.id || null,
+      created_by:   user?.id              || null,
     });
     setSaving(false);
     if (error) { setFormError(error); return; }
-    setForm(EMPTY_FORM); setEditId(null); setShowForm(false);
+    setForm(EMPTY_FORM);
+    setEditId(null);
+    setShowForm(false);
     reload();
   };
 
@@ -91,117 +120,194 @@ export default function PopupsSection() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm("Supprimer cette annonce ?")) return;
+    if (!window.confirm("Supprimer cette annonce définitivement ?")) return;
     await deleteAnnouncement(id);
     reload();
   };
 
-  if (loading) return <div className="adm-empty">Chargement…</div>;
+  if (loading) return (
+    <div className="rpx-panel">
+      <div className="rpx-empty">Chargement…</div>
+    </div>
+  );
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 className="adm-section-title" style={{ margin: 0 }}>Annonces popup</h2>
+    <div className="rpx-panel">
+      {/* Header */}
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ ANNONCES</h2>
         {canManage && (
-          <button className="adm-btn adm-btn--primary" onClick={() => { setForm(EMPTY_FORM); setEditId(null); setShowForm((v) => !v); }}>
-            {showForm ? "Annuler" : "+ Nouvelle annonce"}
+          <button
+            className="rpx-btn rpx-btn--primary"
+            onClick={openNew}
+          >
+            {showForm && !editId ? "Annuler" : "+ Nouvelle annonce"}
           </button>
         )}
       </div>
 
-      {/* Formulaire */}
+      {/* ── Formulaire ── */}
       {showForm && canManage && (
-        <form className="poll-create-form" onSubmit={handleSubmit}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="adm-field">
-              <label className="adm-label">Titre</label>
-              <input className="adm-input" value={form.title} onChange={(e) => setField("title", e.target.value)} placeholder="Titre de l'annonce" />
+        <form className="rpx-form" onSubmit={handleSubmit}>
+          {/* Ligne 1 : titre + type */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Titre</label>
+              <input
+                className="rpx-input"
+                value={form.title}
+                onChange={(e) => setField("title", e.target.value)}
+                placeholder="Titre de l'annonce"
+              />
             </div>
-            <div className="adm-field">
-              <label className="adm-label">Type</label>
-              <select className="adm-input" value={form.type} onChange={(e) => setField("type", e.target.value)}>
-                {TYPE_OPTIONS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+            <div className="rpx-field">
+              <label className="rpx-label">Type</label>
+              <select
+                className="rpx-input"
+                value={form.type}
+                onChange={(e) => setField("type", e.target.value)}
+              >
+                {TYPE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
               </select>
             </div>
           </div>
 
-          <div className="adm-field">
-            <label className="adm-label">Contenu</label>
-            <textarea className="adm-input" rows={3} value={form.body} onChange={(e) => setField("body", e.target.value)} placeholder="Texte de l'annonce…" />
+          {/* Contenu */}
+          <div className="rpx-field">
+            <label className="rpx-label">Contenu</label>
+            <textarea
+              className="rpx-input rpx-textarea"
+              rows={3}
+              value={form.body}
+              onChange={(e) => setField("body", e.target.value)}
+              placeholder="Texte de l'annonce…"
+            />
           </div>
 
-          <div className="adm-field">
-            <label className="adm-label">Style</label>
-            <div className="ann-popup-style-picker">
+          {/* Sélecteur de style visuel */}
+          <div className="rpx-field">
+            <label className="rpx-label">Style visuel</label>
+            <div className="rpx-style-cards">
               {STYLE_OPTIONS.map((s) => (
                 <div
                   key={s.value}
-                  className={`ann-style-opt${form.style === s.value ? " ann-style-opt--selected" : ""}`}
+                  className={`rpx-style-card rpx-style-card--${s.value}${form.style === s.value ? " rpx-style-card--active" : ""}`}
                   onClick={() => setField("style", s.value)}
                 >
-                  <div>{s.label}</div>
-                  <div style={{ opacity: 0.55, fontSize: 10, marginTop: 2 }}>{s.desc}</div>
+                  <div className="rpx-style-card__preview">{s.emoji}</div>
+                  <div className="rpx-style-card__label">{s.label}</div>
+                  <div className="rpx-style-card__desc">{s.desc}</div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="adm-field">
-              <label className="adm-label">Bouton CTA (label)</label>
-              <input className="adm-input" value={form.cta_label} onChange={(e) => setField("cta_label", e.target.value)} placeholder="En savoir plus" />
+          {/* CTA */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Bouton CTA — Label</label>
+              <input
+                className="rpx-input"
+                value={form.cta_label}
+                onChange={(e) => setField("cta_label", e.target.value)}
+                placeholder="En savoir plus"
+              />
             </div>
-            <div className="adm-field">
-              <label className="adm-label">Bouton CTA (URL)</label>
-              <input className="adm-input" type="url" value={form.cta_url} onChange={(e) => setField("cta_url", e.target.value)} placeholder="https://…" />
-            </div>
-            <div className="adm-field">
-              <label className="adm-label">Programmer (optionnel)</label>
-              <input className="adm-input" type="datetime-local" value={form.scheduled_at} onChange={(e) => setField("scheduled_at", e.target.value)} />
-            </div>
-            <div className="adm-field">
-              <label className="adm-label">Expiration (optionnel)</label>
-              <input className="adm-input" type="datetime-local" value={form.expires_at} onChange={(e) => setField("expires_at", e.target.value)} />
+            <div className="rpx-field">
+              <label className="rpx-label">Bouton CTA — URL</label>
+              <input
+                className="rpx-input"
+                type="url"
+                value={form.cta_url}
+                onChange={(e) => setField("cta_url", e.target.value)}
+                placeholder="https://…"
+              />
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "8px 0" }}>
-            <input type="checkbox" id="ann-active" checked={form.is_active} onChange={(e) => setField("is_active", e.target.checked)} />
-            <label htmlFor="ann-active" className="adm-label" style={{ margin: 0, cursor: "pointer" }}>
-              Activer immédiatement
-            </label>
+          {/* Dates */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Programmer (optionnel)</label>
+              <input
+                className="rpx-input"
+                type="datetime-local"
+                value={form.scheduled_at}
+                onChange={(e) => setField("scheduled_at", e.target.value)}
+              />
+            </div>
+            <div className="rpx-field">
+              <label className="rpx-label">Expiration (optionnel)</label>
+              <input
+                className="rpx-input"
+                type="datetime-local"
+                value={form.expires_at}
+                onChange={(e) => setField("expires_at", e.target.value)}
+              />
+            </div>
           </div>
 
-          {formError && <p className="adm-error">{formError}</p>}
-          <button type="submit" className="adm-btn adm-btn--primary" disabled={saving}>
+          {/* Toggle activer */}
+          <label className="rpx-toggle-row">
+            <span className="rpx-toggle">
+              <input
+                type="checkbox"
+                checked={form.is_active}
+                onChange={(e) => setField("is_active", e.target.checked)}
+              />
+              <span className="rpx-toggle-slider" />
+            </span>
+            <span className="rpx-label" style={{ margin: 0 }}>Activer immédiatement</span>
+          </label>
+
+          {formError && <p className="rpx-error">{formError}</p>}
+
+          <button type="submit" className="rpx-btn rpx-btn--primary" disabled={saving}>
             {saving ? "Enregistrement…" : (editId ? "Mettre à jour" : "Créer l'annonce")}
           </button>
         </form>
       )}
 
-      {/* Liste */}
+      {/* ── Liste des annonces ── */}
       {anns.length === 0 ? (
-        <div className="adm-empty">Aucune annonce configurée.</div>
+        <div className="rpx-empty">Aucune annonce configurée.</div>
       ) : (
-        <div className="adm-popup-list">
+        <div className="rpx-ann-list">
           {anns.map((ann) => (
-            <div key={ann.id} className="adm-popup-row">
-              <div className={ann.is_active ? "adm-popup-active-dot" : "adm-popup-inactive-dot"} />
-              <div className="adm-popup-row__title">{ann.title}</div>
-              <div className="adm-popup-row__style">{ann.style} · {ann.type}</div>
-              <div className="adm-poll-row__actions">
-                {canManage && (
-                  <>
-                    <button className={`adm-poll-btn${ann.is_active ? "" : " adm-poll-btn--publish"}`} onClick={() => handleToggle(ann)}>
-                      {ann.is_active ? "Désactiver" : "Activer"}
-                    </button>
-                    <button className="adm-poll-btn" onClick={() => handleEdit(ann)}>Éditer</button>
-                    <button className="adm-poll-btn" style={{ color: "#ff6060", borderColor: "rgba(255,80,80,0.3)" }} onClick={() => handleDelete(ann.id)}>
-                      Supprimer
-                    </button>
-                  </>
-                )}
-              </div>
+            <div
+              key={ann.id}
+              className={`rpx-ann-row${ann.is_active ? " rpx-ann-row--active" : ""}`}
+            >
+              <span
+                className="rpx-ann-dot"
+                style={{ background: ann.is_active ? "#2ecc71" : "#555" }}
+              />
+              <div className="rpx-ann-title">{ann.title}</div>
+              <div className="rpx-ann-meta">{ann.style} · {ann.type}</div>
+              {canManage && (
+                <div className="rpx-ann-actions">
+                  <button
+                    className="rpx-btn rpx-btn--sm"
+                    onClick={() => handleToggle(ann)}
+                  >
+                    {ann.is_active ? "Désactiver" : "Activer"}
+                  </button>
+                  <button
+                    className="rpx-btn rpx-btn--sm"
+                    onClick={() => handleEdit(ann)}
+                  >
+                    Éditer
+                  </button>
+                  <button
+                    className="rpx-btn rpx-btn--sm rpx-btn--danger"
+                    onClick={() => handleDelete(ann.id)}
+                  >
+                    Supprimer
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

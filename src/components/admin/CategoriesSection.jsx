@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getAllCategories, upsertCategory, deleteCategory, reorderCategory } from "../../lib/dynCategories";
 
+// ── Helpers ────────────────────────────────────────────────────
 const EMPTY = {
   id: null, name: "", slug: "", description: "", icon: "✦",
   colorPrimary: "#1fa8dc", colorSecondary: "#8b0000",
@@ -8,14 +9,20 @@ const EMPTY = {
 };
 
 function slugify(str) {
-  return str.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+  return str
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-");
 }
 
+// ── Composant principal ────────────────────────────────────────
 export default function CategoriesSection() {
-  const [cats, setCats] = useState(() => getAllCategories());
+  const [cats, setCats]       = useState(() => getAllCategories());
   const [editing, setEditing] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
   const [feedback, setFeedback] = useState(null);
 
   useEffect(() => {
@@ -24,23 +31,28 @@ export default function CategoriesSection() {
     return () => window.removeEventListener("woltar:dyn_categories", refresh);
   }, []);
 
-  const openNew = () => setEditing({ ...EMPTY, displayOrder: cats.length + 1 });
+  const openNew  = () => setEditing({ ...EMPTY, displayOrder: cats.length + 1 });
   const openEdit = (cat) => setEditing({ ...cat });
-  const cancel = () => { setEditing(null); setFeedback(null); };
+  const cancel   = () => { setEditing(null); setFeedback(null); };
 
   const set = (k, v) => setEditing((f) => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
     if (!editing.name.trim()) return;
     setSaving(true);
+    setFeedback(null);
     const data = {
       ...editing,
       slug: editing.slug || slugify(editing.name),
     };
     const { ok, error } = await upsertCategory(data);
     setSaving(false);
-    if (ok) { setFeedback({ type: "success", message: "✓ Catégorie sauvegardée." }); setEditing(null); }
-    else setFeedback({ type: "error", message: `✗ ${error}` });
+    if (ok) {
+      setFeedback({ type: "success", message: "✓ Catégorie sauvegardée." });
+      setEditing(null);
+    } else {
+      setFeedback({ type: "error", message: `✗ ${error}` });
+    }
   };
 
   const handleDelete = async (id, name) => {
@@ -53,95 +65,236 @@ export default function CategoriesSection() {
   };
 
   const sorted = [...cats].sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
+  const isNew  = !editing?.id || String(editing.id).startsWith("cat-");
 
   return (
-    <div className="adm-wrap">
-      <div className="adm-inner">
-        <div className="adm-top-row">
-          <h2 className="adm-title">Catégories</h2>
-          <button className="db-btn db-btn--publish" style={{ marginTop: 0 }} onClick={openNew}>+ Nouvelle catégorie</button>
+    <div className="rpx-panel">
+      {/* Header */}
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ CATÉGORIES</h2>
+        <button className="rpx-btn rpx-btn--primary" onClick={openNew}>
+          + Nouvelle
+        </button>
+      </div>
+
+      {/* Feedback global */}
+      {feedback && !editing && (
+        <div className={`rpx-feedback rpx-feedback--${feedback.type}`}>
+          {feedback.message}
         </div>
+      )}
 
-        {feedback && (
-          <div className={`db-feedback db-feedback--${feedback.type}`}>{feedback.message}</div>
-        )}
+      {/* ── Formulaire édition / création ── */}
+      {editing && (
+        <div className="rpx-panel rpx-panel--inner">
+          <div className="rpx-section-title">
+            {isNew ? "Nouvelle catégorie" : "Modifier la catégorie"}
+          </div>
 
-        {/* Formulaire édition */}
-        {editing && (
-          <div className="adm-card adm-card--form">
-            <div className="adm-card-title">{editing.id && !editing.id.startsWith("cat-") ? "Modifier" : "Nouvelle catégorie"}</div>
-            <div className="adm-two-col">
-              <div>
-                <label className="db-label">Nom</label>
-                <input className="db-input" value={editing.name} onChange={(e) => { set("name", e.target.value); if (!editing.id || editing.id.startsWith("cat-")) set("slug", slugify(e.target.value)); }} />
-                <label className="db-label">Slug (URL)</label>
-                <input className="db-input" value={editing.slug} onChange={(e) => set("slug", e.target.value)} placeholder="ex: actualites" />
-              </div>
-              <div>
-                <label className="db-label">Icône</label>
-                <input className="db-input" value={editing.icon} onChange={(e) => set("icon", e.target.value)} placeholder="✦" style={{ fontSize: 20 }} />
-                <label className="db-label">Ordre</label>
-                <input className="db-input" type="number" value={editing.displayOrder} onChange={(e) => set("displayOrder", Number(e.target.value))} />
-              </div>
+          {feedback && (
+            <div className={`rpx-feedback rpx-feedback--${feedback.type}`}>
+              {feedback.message}
             </div>
-            <label className="db-label">Description</label>
-            <input className="db-input" value={editing.description} onChange={(e) => set("description", e.target.value)} />
-            <div className="adm-two-col" style={{ marginTop: 14 }}>
-              <div>
-                <label className="db-label">Couleur principale</label>
-                <div className="adm-color-row">
-                  <input type="color" value={editing.colorPrimary} onChange={(e) => set("colorPrimary", e.target.value)} className="adm-color-pick" />
-                  <input className="db-input" value={editing.colorPrimary} onChange={(e) => set("colorPrimary", e.target.value)} style={{ fontFamily: "monospace", flex: 1 }} />
-                </div>
-              </div>
-              <div>
-                <label className="db-label">Couleur secondaire</label>
-                <div className="adm-color-row">
-                  <input type="color" value={editing.colorSecondary} onChange={(e) => set("colorSecondary", e.target.value)} className="adm-color-pick" />
-                  <input className="db-input" value={editing.colorSecondary} onChange={(e) => set("colorSecondary", e.target.value)} style={{ fontFamily: "monospace", flex: 1 }} />
-                </div>
-              </div>
+          )}
+
+          {/* Nom + Slug */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Nom</label>
+              <input
+                className="rpx-input"
+                value={editing.name}
+                onChange={(e) => {
+                  set("name", e.target.value);
+                  if (isNew) set("slug", slugify(e.target.value));
+                }}
+                placeholder="Nom de la catégorie"
+              />
             </div>
-            <label className="adm-toggle-row" style={{ marginTop: 16 }}>
-              <input type="checkbox" checked={!!editing.isPublic} onChange={(e) => set("isPublic", e.target.checked)} />
-              <span className="adm-toggle-label">Visible publiquement</span>
-            </label>
-            <div className="db-actions">
-              <button className="db-btn db-btn--publish" onClick={handleSave} disabled={saving || !editing.name.trim()}>
-                {saving ? "Sauvegarde…" : "Sauvegarder"}
-              </button>
-              <button className="db-btn db-btn--cancel" onClick={cancel}>Annuler</button>
+            <div className="rpx-field">
+              <label className="rpx-label">Slug (URL)</label>
+              <input
+                className="rpx-input"
+                value={editing.slug}
+                onChange={(e) => set("slug", e.target.value)}
+                placeholder="ex: actualites"
+                style={{ fontFamily: "monospace" }}
+              />
             </div>
           </div>
-        )}
 
-        {/* Liste */}
-        <div className="adm-cat-list">
+          {/* Icône + Ordre */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Icône</label>
+              <input
+                className="rpx-input"
+                value={editing.icon}
+                onChange={(e) => set("icon", e.target.value)}
+                placeholder="✦"
+                style={{ fontSize: 20 }}
+              />
+            </div>
+            <div className="rpx-field">
+              <label className="rpx-label">Ordre d'affichage</label>
+              <input
+                className="rpx-input"
+                type="number"
+                value={editing.displayOrder}
+                onChange={(e) => set("displayOrder", Number(e.target.value))}
+              />
+            </div>
+          </div>
+
+          {/* Description pleine largeur */}
+          <div className="rpx-field">
+            <label className="rpx-label">Description</label>
+            <input
+              className="rpx-input"
+              value={editing.description}
+              onChange={(e) => set("description", e.target.value)}
+              placeholder="Courte description de la catégorie"
+            />
+          </div>
+
+          {/* Color pickers */}
+          <div className="rpx-form-grid rpx-form-grid--2">
+            <div className="rpx-field">
+              <label className="rpx-label">Couleur principale</label>
+              <div className="rpx-color-row">
+                <input
+                  type="color"
+                  className="rpx-color-pick"
+                  value={editing.colorPrimary}
+                  onChange={(e) => set("colorPrimary", e.target.value)}
+                />
+                <input
+                  className="rpx-input"
+                  value={editing.colorPrimary}
+                  onChange={(e) => set("colorPrimary", e.target.value)}
+                  style={{ fontFamily: "monospace", flex: 1 }}
+                />
+              </div>
+            </div>
+            <div className="rpx-field">
+              <label className="rpx-label">Couleur secondaire</label>
+              <div className="rpx-color-row">
+                <input
+                  type="color"
+                  className="rpx-color-pick"
+                  value={editing.colorSecondary}
+                  onChange={(e) => set("colorSecondary", e.target.value)}
+                />
+                <input
+                  className="rpx-input"
+                  value={editing.colorSecondary}
+                  onChange={(e) => set("colorSecondary", e.target.value)}
+                  style={{ fontFamily: "monospace", flex: 1 }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Toggle public */}
+          <label className="rpx-toggle-row" style={{ marginTop: 16 }}>
+            <span className="rpx-toggle">
+              <input
+                type="checkbox"
+                checked={!!editing.isPublic}
+                onChange={(e) => set("isPublic", e.target.checked)}
+              />
+              <span className="rpx-toggle-slider" />
+            </span>
+            <span className="rpx-label" style={{ margin: 0 }}>Visible publiquement</span>
+          </label>
+
+          {/* Boutons */}
+          <div className="rpx-form-actions">
+            <button
+              className="rpx-btn rpx-btn--primary"
+              onClick={handleSave}
+              disabled={saving || !editing.name.trim()}
+            >
+              {saving ? "Sauvegarde…" : "Sauvegarder"}
+            </button>
+            <button className="rpx-btn" onClick={cancel}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Grille des catégories ── */}
+      {sorted.length === 0 ? (
+        <div className="rpx-empty">Aucune catégorie.</div>
+      ) : (
+        <div className="rpx-cat-grid">
           {sorted.map((cat, idx) => (
-            <div key={cat.id} className="adm-cat-row">
-              <span className="adm-cat-icon" style={{ fontSize: 22 }}>{cat.icon}</span>
-              <div className="adm-cat-info">
-                <span className="adm-cat-name">{cat.name}</span>
-                <span className="adm-cat-slug">/{cat.slug}</span>
-                {cat.description && <span className="adm-cat-desc">{cat.description}</span>}
+            <div
+              key={cat.id}
+              className="rpx-cat-card"
+              style={{
+                "--cat-border": cat.colorPrimary,
+                "--cat-shadow": cat.colorPrimary + "44",
+              }}
+            >
+              <div className="rpx-cat-card__icon">{cat.icon}</div>
+              <div className="rpx-cat-card__name">{cat.name}</div>
+              <div className="rpx-cat-card__slug">/{cat.slug}</div>
+
+              <div className="rpx-cat-card__colors">
+                <span
+                  className="rpx-dot"
+                  style={{ background: cat.colorPrimary }}
+                  title={cat.colorPrimary}
+                />
+                <span
+                  className="rpx-dot"
+                  style={{ background: cat.colorSecondary }}
+                  title={cat.colorSecondary}
+                />
               </div>
-              <div className="adm-cat-dots">
-                <span className="adm-dot" style={{ background: cat.colorPrimary }} title={cat.colorPrimary} />
-                <span className="adm-dot" style={{ background: cat.colorSecondary }} title={cat.colorSecondary} />
-              </div>
-              <span className={`adm-badge ${cat.isPublic ? "adm-badge--ok" : "adm-badge--off"}`}>
+
+              <span
+                className={`rpx-badge ${cat.isPublic ? "rpx-badge--active" : "rpx-badge--draft"}`}
+              >
                 {cat.isPublic ? "Public" : "Masqué"}
               </span>
-              <div className="adm-cat-actions">
-                <button className="adm-icon-btn" onClick={() => handleReorder(cat.id, "up")} disabled={idx === 0} title="Monter">↑</button>
-                <button className="adm-icon-btn" onClick={() => handleReorder(cat.id, "down")} disabled={idx === sorted.length - 1} title="Descendre">↓</button>
-                <button className="adm-icon-btn" onClick={() => openEdit(cat)} title="Modifier">✏</button>
-                <button className="adm-icon-btn adm-icon-btn--danger" onClick={() => handleDelete(cat.id, cat.name)} title="Supprimer">×</button>
+
+              <div className="rpx-cat-card__actions">
+                <button
+                  className="rpx-btn rpx-btn--sm"
+                  onClick={() => handleReorder(cat.id, "up")}
+                  disabled={idx === 0}
+                  title="Monter"
+                >
+                  ↑
+                </button>
+                <button
+                  className="rpx-btn rpx-btn--sm"
+                  onClick={() => handleReorder(cat.id, "down")}
+                  disabled={idx === sorted.length - 1}
+                  title="Descendre"
+                >
+                  ↓
+                </button>
+                <button
+                  className="rpx-btn rpx-btn--sm"
+                  onClick={() => openEdit(cat)}
+                  title="Modifier"
+                >
+                  ✏
+                </button>
+                <button
+                  className="rpx-btn rpx-btn--sm rpx-btn--danger"
+                  onClick={() => handleDelete(cat.id, cat.name)}
+                  title="Supprimer"
+                >
+                  ×
+                </button>
               </div>
             </div>
           ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }

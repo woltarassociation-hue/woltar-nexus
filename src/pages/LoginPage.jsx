@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { signInWithUsername } from "../lib/auth.js";
+import { signInFromMembers } from "../lib/auth.js";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -16,10 +16,13 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error: err } = await signInWithUsername(username, password);
+    const { user, error: err } = await signInFromMembers(username, password);
     setLoading(false);
     if (err) { setError(err); return; }
-    navigate(redirectTo, { replace: true });
+    const dest = user?.role === "admin" || user?.role === "super_admin"
+      ? "/association/dashboard"
+      : redirectTo;
+    navigate(dest, { replace: true });
   };
 
   return (

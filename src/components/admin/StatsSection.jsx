@@ -1,71 +1,126 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { fetchDashboardStats } from "../../lib/stats.js";
 
-function StatCard({ icon, value, label, variant = "" }) {
+// ── Compteur animé ─────────────────────────────────────────────
+function useAnimatedCount(target, duration = 800) {
+  const [value, setValue] = useState(0);
+  const raf = useRef(null);
+
+  useEffect(() => {
+    if (target == null) return;
+    const start = performance.now();
+    const animate = (now) => {
+      const elapsed = now - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setValue(Math.round(eased * target));
+      if (progress < 1) raf.current = requestAnimationFrame(animate);
+    };
+    raf.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(raf.current);
+  }, [target, duration]);
+
+  return value;
+}
+
+// ── KpiCard ────────────────────────────────────────────────────
+function KpiCard({ icon, value, label, color, max }) {
+  const animated = useAnimatedCount(value ?? 0);
+  const pct = max && value != null ? Math.round((value / max) * 100) : null;
+
   return (
-    <div className={`stat-card stat-card--${variant}`}>
-      <div className="stat-card__icon">{icon}</div>
-      <div className="stat-card__value">{value ?? "—"}</div>
-      <div className="stat-card__label">{label}</div>
+    <div className="rpx-card" style={{ "--rpx-color": color }}>
+      <div className="rpx-card__icon">{icon}</div>
+      <div className="rpx-card__value">{animated ?? "—"}</div>
+      <div className="rpx-card__label">{label}</div>
+      {pct != null && (
+        <div className="rpx-card__bar">
+          <div className="rpx-card__bar-fill" style={{ width: `${pct}%` }} />
+        </div>
+      )}
     </div>
   );
 }
 
+// ── Composant principal ────────────────────────────────────────
 export default function StatsSection() {
   const [stats, setStats]     = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
+  const [refreshed, setRefreshed] = useState(new Date());
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
+    setError(null);
     fetchDashboardStats().then((data) => {
-      if (data) setStats(data);
+      if (data) { setStats(data); setRefreshed(new Date()); }
       else setError("Impossible de charger les statistiques.");
       setLoading(false);
     });
-  }, []);
+  };
 
-  if (loading) return <div className="adm-empty">Chargement des statistiques…</div>;
-  if (error)   return <div className="adm-empty" style={{ color: "#ff6060" }}>{error}</div>;
+  useEffect(() => { load(); }, []);
+
+  if (loading) return (
+    <div className="rpx-panel">
+      <div className="rpx-empty">Chargement des statistiques…</div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="rpx-panel">
+      <div className="rpx-empty rpx-empty--error">{error}</div>
+    </div>
+  );
 
   return (
-    <div>
-      <h2 className="adm-section-title">Vue d'ensemble</h2>
-
-      <div className="stats-grid">
-        <StatCard icon="📝" value={stats.articles.published} label="Articles publiés"   variant="cyan"   />
-        <StatCard icon="📋" value={stats.articles.draft}     label="Brouillons"         variant=""       />
-        <StatCard icon="👥" value={stats.members.total}      label="Membres"            variant="green"  />
-        <StatCard icon="✨" value={stats.members.newThisMonth} label="Nouveaux ce mois" variant="green"  />
-        <StatCard icon="🎫" value={stats.tickets.open}       label="Tickets ouverts"   variant="red"    />
-        <StatCard icon="📊" value={stats.polls.active}       label="Sondages actifs"   variant="purple" />
-        <StatCard icon="🗳️" value={stats.polls.totalVotes}   label="Votes total"       variant="purple" />
-        <StatCard icon="🎪" value={stats.events.active}      label="Événements"        variant="gold"   />
+    <div className="rpx-panel">
+      {/* Header */}
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ STATISTIQUES</h2>
+        <button className="rpx-refresh-btn" onClick={load} title="Actualiser">↻</button>
       </div>
 
-      <div className="stats-section-title">Articles</div>
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
-        <StatCard icon="📄" value={stats.articles.total}     label="Total"             />
-        <StatCard icon="✅" value={stats.articles.published} label="Publiés" variant="green" />
-        <StatCard icon="✏️" value={stats.articles.draft}     label="Brouillons"        />
+      {/* KPI PRINCIPAUX */}
+      <div className="rpx-section-title">KPI PRINCIPAUX</div>
+      <div className="rpx-cards-grid">
+        <KpiCard icon="📝" value={stats.articles.published} label="Articles publiés"    color="#1fa8dc" max={stats.articles.total} />
+        <KpiCard icon="✏️" value={stats.articles.draft}     label="Brouillons"          color="#8b8b8b" />
+        <KpiCard icon="👥" value={stats.members.total}      label="Membres total"       color="#2ecc71" />
+        <KpiCard icon="✨" value={stats.members.newThisMonth} label="Nouveaux membres"  color="#27ae60" />
+        <KpiCard icon="🎫" value={stats.tickets.open}       label="Tickets ouverts"     color="#e74c3c" max={stats.tickets.total} />
+        <KpiCard icon="📋" value={stats.tickets.total}      label="Tickets total"       color="#c0392b" />
+        <KpiCard icon="📊" value={stats.polls.active}       label="Sondages actifs"     color="#a865d8" />
+        <KpiCard icon="🗳️" value={stats.polls.totalVotes}   label="Votes total"         color="#8e44ad" />
       </div>
 
-      <div className="stats-section-title">Tickets support</div>
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
-        <StatCard icon="📩" value={stats.tickets.total} label="Total"        />
-        <StatCard icon="🔴" value={stats.tickets.open}  label="Ouverts" variant="red" />
+      {/* ARTICLES */}
+      <div className="rpx-section-title">ARTICLES</div>
+      <div className="rpx-cards-grid rpx-cards-grid--sm">
+        <KpiCard icon="📄" value={stats.articles.total}     label="Total"              color="#1fa8dc" />
+        <KpiCard icon="✅" value={stats.articles.published} label="Publiés"            color="#2ecc71" max={stats.articles.total} />
+        <KpiCard icon="✏️" value={stats.articles.draft}     label="Brouillons"         color="#8b8b8b" />
       </div>
 
-      <div className="stats-section-title">Communauté</div>
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))" }}>
-        <StatCard icon="👥" value={stats.members.total}        label="Membres"           variant="green" />
-        <StatCard icon="🆕" value={stats.members.newThisMonth} label="Nouveaux (30j)"   variant="green" />
-        <StatCard icon="📊" value={stats.polls.active}         label="Sondages actifs"  variant="purple" />
-        <StatCard icon="🗳️" value={stats.polls.totalVotes}     label="Votes total"      variant="purple" />
+      {/* TICKETS SUPPORT */}
+      <div className="rpx-section-title">TICKETS SUPPORT</div>
+      <div className="rpx-cards-grid rpx-cards-grid--sm">
+        <KpiCard icon="📩" value={stats.tickets.total} label="Total"                   color="#e67e22" />
+        <KpiCard icon="🔴" value={stats.tickets.open}  label="Ouverts"                 color="#e74c3c" max={stats.tickets.total} />
       </div>
 
-      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", marginTop: 20, textAlign: "right" }}>
-        Dernière mise à jour : {new Date().toLocaleTimeString("fr-FR")}
-      </p>
+      {/* COMMUNAUTÉ */}
+      <div className="rpx-section-title">COMMUNAUTÉ</div>
+      <div className="rpx-cards-grid rpx-cards-grid--sm">
+        <KpiCard icon="👥" value={stats.members.total}        label="Membres"          color="#2ecc71" />
+        <KpiCard icon="🆕" value={stats.members.newThisMonth} label="Nouveaux (30j)"   color="#27ae60" />
+        <KpiCard icon="📊" value={stats.polls.active}         label="Sondages actifs"  color="#a865d8" />
+        <KpiCard icon="🗳️" value={stats.polls.totalVotes}     label="Votes total"      color="#8e44ad" />
+      </div>
+
+      <div className="rpx-timestamp">
+        Dernière mise à jour : {refreshed.toLocaleTimeString("fr-FR")}
+      </div>
     </div>
   );
 }

@@ -9,6 +9,7 @@ import {
   computeResults,
 } from "../../lib/polls.js";
 
+// ── Constantes ─────────────────────────────────────────────────
 const STATUS_LABELS = {
   draft:          "Brouillon",
   pending_review: "En validation",
@@ -17,23 +18,88 @@ const STATUS_LABELS = {
   archived:       "Archivé",
 };
 
+// ── Heatmap pseudo-aléatoire basée sur poll.id + heure ────────
+function pseudoLevel(pollId, hour) {
+  const seed = (String(pollId).charCodeAt(0) || 1) * (hour + 1) * 37;
+  return seed % 5; // 0-4
+}
+
+// ── Onglet Analytiques ─────────────────────────────────────────
+function PollAnalytics({ polls }) {
+  const analyticsPolls = polls.filter(
+    (p) => p.status === "published" || p.status === "closed"
+  );
+
+  if (analyticsPolls.length === 0) {
+    return <div className="rpx-empty">Aucun sondage publié ou fermé.</div>;
+  }
+
+  return (
+    <div className="rpx-analytics-list">
+      {analyticsPolls.map((poll) => {
+        const results    = computeResults(poll);
+        const totalVotes = (poll.poll_votes || []).length;
+        return (
+          <div key={poll.id} className="rpx-analytics-block">
+            <div className="rpx-analytics-title">
+              {poll.title}
+              <span className="rpx-analytics-votes">{totalVotes} vote{totalVotes !== 1 ? "s" : ""}</span>
+            </div>
+
+            {/* Barres de résultats */}
+            <div className="rpx-poll-bars">
+              {results.map((opt) => (
+                <div key={opt.idx} className="rpx-poll-bar-row">
+                  <div className="rpx-poll-bar-label">{opt.label}</div>
+                  <div className="rpx-poll-bar-track">
+                    <div
+                      className="rpx-poll-bar-fill"
+                      style={{ width: `${opt.pct}%` }}
+                    />
+                  </div>
+                  <div className="rpx-poll-bar-pct">{opt.pct}%</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Heatmap par heure (simulée) */}
+            <div className="rpx-heatmap-label">Activité par heure (simulée)</div>
+            <div className="rpx-heatmap">
+              {Array.from({ length: 24 }, (_, h) => (
+                <div
+                  key={h}
+                  className="rpx-heatmap-cell"
+                  data-level={pseudoLevel(poll.id, h)}
+                  title={`${String(h).padStart(2, "0")}h`}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Composant principal ────────────────────────────────────────
 export default function PollsSection() {
-  const { user, hasPermission, profile } = useAuth();
+  const { user, hasPermission } = useAuth();
   const canValidate = hasPermission("validate_poll");
   const canManage   = hasPermission("manage_polls");
 
   const [polls, setPolls]         = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [tab, setTab]             = useState("index");
   const [showForm, setShowForm]   = useState(false);
 
   // Formulaire
-  const [title, setTitle]         = useState("");
-  const [desc, setDesc]           = useState("");
-  const [options, setOptions]     = useState(["", ""]);
-  const [expiresAt, setExpiresAt] = useState("");
+  const [title, setTitle]           = useState("");
+  const [desc, setDesc]             = useState("");
+  const [options, setOptions]       = useState(["", ""]);
+  const [expiresAt, setExpiresAt]   = useState("");
   const [allowMulti, setAllowMulti] = useState(false);
-  const [formError, setFormError] = useState("");
-  const [saving, setSaving]       = useState(false);
+  const [formError, setFormError]   = useState("");
+  const [saving, setSaving]         = useState(false);
 
   const reload = () => {
     getAllPolls().then((data) => { setPolls(data); setLoading(false); });
@@ -41,23 +107,23 @@ export default function PollsSection() {
 
   useEffect(() => { reload(); }, []);
 
-  const addOption = () => setOptions((o) => [...o, ""]);
+  const addOption    = () => setOptions((o) => [...o, ""]);
   const removeOption = (i) => setOptions((o) => o.filter((_, idx) => idx !== i));
-  const setOption = (i, v) => setOptions((o) => o.map((opt, idx) => idx === i ? v : opt));
+  const setOption    = (i, v) => setOptions((o) => o.map((opt, idx) => idx === i ? v : opt));
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setFormError("");
-    if (!title.trim())                     { setFormError("Titre requis."); return; }
-    if (options.filter(Boolean).length < 2){ setFormError("Au moins 2 options."); return; }
+    if (!title.trim())                      { setFormError("Titre requis."); return; }
+    if (options.filter(Boolean).length < 2) { setFormError("Au moins 2 options requises."); return; }
     setSaving(true);
     const { error } = await createPoll({
-      title: title.trim(),
+      title:       title.trim(),
       description: desc.trim(),
-      options: options.filter(Boolean),
+      options:     options.filter(Boolean),
       allowMulti,
-      expiresAt: expiresAt || null,
-      createdBy: user?.id || null,
+      expiresAt:   expiresAt || null,
+      createdBy:   user?.id  || null,
     });
     setSaving(false);
     if (error) { setFormError(error); return; }
@@ -77,136 +143,253 @@ export default function PollsSection() {
   };
 
   const handleDelete = async (pollId) => {
-    if (!confirm("Supprimer ce sondage définitivement ?")) return;
+    if (!window.confirm("Supprimer ce sondage définitivement ?")) return;
     await deletePoll(pollId);
     reload();
   };
 
-  if (loading) return <div className="adm-empty">Chargement…</div>;
+  // KPI globaux
+  const totalPolls = polls.length;
+  const totalVotes = polls.reduce((acc, p) => acc + (p.poll_votes || []).length, 0);
+  const avgParticipation = totalPolls > 0
+    ? Math.round(totalVotes / totalPolls)
+    : 0;
+
+  if (loading) return (
+    <div className="rpx-panel">
+      <div className="rpx-empty">Chargement…</div>
+    </div>
+  );
 
   return (
-    <div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 className="adm-section-title" style={{ margin: 0 }}>Sondages</h2>
+    <div className="rpx-panel">
+      {/* Header */}
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ SONDAGES</h2>
         {canManage && (
-          <button className="adm-btn adm-btn--primary" onClick={() => setShowForm((v) => !v)}>
-            {showForm ? "Annuler" : "+ Nouveau sondage"}
+          <button
+            className="rpx-btn rpx-btn--primary"
+            onClick={() => setShowForm((v) => !v)}
+          >
+            {showForm ? "Annuler" : "+ Nouveau"}
           </button>
         )}
       </div>
 
+      {/* KPI row */}
+      <div className="rpx-kpi-row">
+        <div className="rpx-kpi-inline">
+          <span className="rpx-kpi-value">{totalPolls}</span>
+          <span className="rpx-kpi-label">sondages</span>
+        </div>
+        <div className="rpx-kpi-inline">
+          <span className="rpx-kpi-value">{totalVotes}</span>
+          <span className="rpx-kpi-label">votes total</span>
+        </div>
+        <div className="rpx-kpi-inline">
+          <span className="rpx-kpi-value">{avgParticipation}</span>
+          <span className="rpx-kpi-label">votes / sondage</span>
+        </div>
+      </div>
+
       {/* Formulaire de création */}
       {showForm && canManage && (
-        <form className="poll-create-form" onSubmit={handleCreate}>
-          <div className="adm-field">
-            <label className="adm-label">Titre du sondage</label>
-            <input className="adm-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex : Quel événement en juin ?" />
-          </div>
-          <div className="adm-field">
-            <label className="adm-label">Description (optionnel)</label>
-            <textarea className="adm-input" rows={2} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Contexte ou précisions…" />
-          </div>
+        <div className="rpx-form-panel">
+          <form className="rpx-form" onSubmit={handleCreate}>
+            <div className="rpx-section-title">Nouveau sondage</div>
 
-          <div className="adm-field">
-            <label className="adm-label">Options de réponse</label>
-            <div className="poll-options-list">
-              {options.map((opt, i) => (
-                <div key={i} className="poll-option-input">
-                  <input
-                    className="adm-input"
-                    value={opt}
-                    onChange={(e) => setOption(i, e.target.value)}
-                    placeholder={`Option ${i + 1}`}
-                    style={{ flex: 1 }}
-                  />
-                  {options.length > 2 && (
-                    <button type="button" className="poll-option-remove" onClick={() => removeOption(i)}>✕</button>
-                  )}
-                </div>
-              ))}
+            <div className="rpx-field">
+              <label className="rpx-label">Titre du sondage</label>
+              <input
+                className="rpx-input"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Ex : Quel événement en juin ?"
+              />
             </div>
-            {options.length < 8 && (
-              <button type="button" className="poll-add-option-btn" onClick={addOption}>
-                + Ajouter une option
-              </button>
-            )}
-          </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div className="adm-field">
-              <label className="adm-label">Date d'expiration (optionnel)</label>
-              <input className="adm-input" type="datetime-local" value={expiresAt} onChange={(e) => setExpiresAt(e.target.value)} />
+            <div className="rpx-field">
+              <label className="rpx-label">Description (optionnel)</label>
+              <textarea
+                className="rpx-input rpx-textarea"
+                rows={2}
+                value={desc}
+                onChange={(e) => setDesc(e.target.value)}
+                placeholder="Contexte ou précisions…"
+              />
             </div>
-            <div className="adm-field" style={{ display: "flex", alignItems: "center", gap: 8, paddingTop: 24 }}>
-              <input type="checkbox" id="allow-multi" checked={allowMulti} onChange={(e) => setAllowMulti(e.target.checked)} />
-              <label htmlFor="allow-multi" className="adm-label" style={{ margin: 0, cursor: "pointer" }}>
-                Choix multiples
-              </label>
-            </div>
-          </div>
 
-          {formError && <p className="adm-error">{formError}</p>}
-          <button type="submit" className="adm-btn adm-btn--primary" disabled={saving}>
-            {saving ? "Création…" : "Créer le sondage (brouillon)"}
-          </button>
-        </form>
-      )}
-
-      {/* Liste des sondages */}
-      {polls.length === 0 ? (
-        <div className="adm-empty">Aucun sondage.</div>
-      ) : (
-        <div className="adm-poll-list">
-          {polls.map((poll) => {
-            const results = computeResults(poll);
-            const totalVotes = (poll.poll_votes || []).length;
-            return (
-              <div key={poll.id} className="adm-poll-row">
-                <div className="adm-poll-row__title">
-                  {poll.is_pinned && <span style={{ color: "#ffd700", marginRight: 6 }}>◈</span>}
-                  {poll.title}
-                  <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginLeft: 8 }}>
-                    {totalVotes} vote{totalVotes !== 1 ? "s" : ""}
-                  </span>
-                </div>
-                <span className={`adm-poll-row__status adm-poll-status--${poll.status.replace("_review","")}`}>
-                  {STATUS_LABELS[poll.status] || poll.status}
-                </span>
-                <div className="adm-poll-row__actions">
-                  {canValidate && poll.status === "pending_review" && (
-                    <button className="adm-poll-btn adm-poll-btn--publish" onClick={() => handleStatus(poll.id, "published")}>
-                      Publier
-                    </button>
-                  )}
-                  {canManage && poll.status === "draft" && (
-                    <button className="adm-poll-btn adm-poll-btn--publish" onClick={() => handleStatus(poll.id, "pending_review")}>
-                      Soumettre
-                    </button>
-                  )}
-                  {canManage && poll.status === "published" && (
-                    <button className="adm-poll-btn adm-poll-btn--close" onClick={() => handleStatus(poll.id, "closed")}>
-                      Fermer
-                    </button>
-                  )}
-                  {canManage && (
-                    <button
-                      className="adm-poll-btn adm-poll-btn--pin"
-                      onClick={() => handlePin(poll.id, poll.is_pinned)}
-                    >
-                      {poll.is_pinned ? "Désépingler" : "Épingler"}
-                    </button>
-                  )}
-                  {canManage && (
-                    <button className="adm-poll-btn" style={{ color: "#ff6060", borderColor: "rgba(255,80,80,0.3)" }} onClick={() => handleDelete(poll.id)}>
-                      Supprimer
-                    </button>
-                  )}
-                </div>
+            <div className="rpx-field">
+              <label className="rpx-label">Options de réponse</label>
+              <div className="rpx-options-list">
+                {options.map((opt, i) => (
+                  <div key={i} className="rpx-option-row">
+                    <input
+                      className="rpx-input"
+                      value={opt}
+                      onChange={(e) => setOption(i, e.target.value)}
+                      placeholder={`Option ${i + 1}`}
+                    />
+                    {options.length > 2 && (
+                      <button
+                        type="button"
+                        className="rpx-btn rpx-btn--sm rpx-btn--danger"
+                        onClick={() => removeOption(i)}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
               </div>
-            );
-          })}
+              {options.length < 8 && (
+                <button
+                  type="button"
+                  className="rpx-btn rpx-btn--sm"
+                  onClick={addOption}
+                  style={{ marginTop: 8 }}
+                >
+                  + Ajouter une option
+                </button>
+              )}
+            </div>
+
+            <div className="rpx-form-grid rpx-form-grid--2">
+              <div className="rpx-field">
+                <label className="rpx-label">Date d'expiration (optionnel)</label>
+                <input
+                  className="rpx-input"
+                  type="datetime-local"
+                  value={expiresAt}
+                  onChange={(e) => setExpiresAt(e.target.value)}
+                />
+              </div>
+              <div className="rpx-field rpx-field--center">
+                <label className="rpx-toggle-row">
+                  <span className="rpx-toggle">
+                    <input
+                      type="checkbox"
+                      checked={allowMulti}
+                      onChange={(e) => setAllowMulti(e.target.checked)}
+                    />
+                    <span className="rpx-toggle-slider" />
+                  </span>
+                  <span className="rpx-label" style={{ margin: 0 }}>Choix multiples</span>
+                </label>
+              </div>
+            </div>
+
+            {formError && <p className="rpx-error">{formError}</p>}
+
+            <button type="submit" className="rpx-btn rpx-btn--primary" disabled={saving}>
+              {saving ? "Création…" : "Créer le sondage (brouillon)"}
+            </button>
+          </form>
         </div>
       )}
+
+      {/* Onglets */}
+      <div className="rpx-tabs">
+        <button
+          className={`rpx-tab${tab === "index" ? " rpx-tab--active" : ""}`}
+          onClick={() => setTab("index")}
+        >
+          Index
+        </button>
+        <button
+          className={`rpx-tab${tab === "analytics" ? " rpx-tab--active" : ""}`}
+          onClick={() => setTab("analytics")}
+        >
+          Analytiques
+        </button>
+      </div>
+
+      {/* ── Onglet Index ── */}
+      {tab === "index" && (
+        polls.length === 0 ? (
+          <div className="rpx-empty">Aucun sondage.</div>
+        ) : (
+          <table className="rpx-table">
+            <thead>
+              <tr>
+                <th>Titre</th>
+                <th>Votes</th>
+                <th>Statut</th>
+                <th>Épinglé</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {polls.map((poll) => {
+                const votes = (poll.poll_votes || []).length;
+                return (
+                  <tr key={poll.id}>
+                    <td>{poll.title}</td>
+                    <td>{votes}</td>
+                    <td>
+                      <span className={`rpx-badge rpx-badge--${poll.status.replace("_review", "")}`}>
+                        {STATUS_LABELS[poll.status] || poll.status}
+                      </span>
+                    </td>
+                    <td style={{ textAlign: "center" }}>
+                      {canManage ? (
+                        <button
+                          className="rpx-btn rpx-btn--sm"
+                          onClick={() => handlePin(poll.id, poll.is_pinned)}
+                          title={poll.is_pinned ? "Désépingler" : "Épingler"}
+                        >
+                          {poll.is_pinned ? "◈" : "○"}
+                        </button>
+                      ) : (
+                        poll.is_pinned ? "◈" : "○"
+                      )}
+                    </td>
+                    <td>
+                      <div className="rpx-row-actions">
+                        {canManage && poll.status === "draft" && (
+                          <button
+                            className="rpx-btn rpx-btn--sm rpx-btn--primary"
+                            onClick={() => handleStatus(poll.id, "pending_review")}
+                          >
+                            Soumettre
+                          </button>
+                        )}
+                        {canValidate && poll.status === "pending_review" && (
+                          <button
+                            className="rpx-btn rpx-btn--sm rpx-btn--success"
+                            onClick={() => handleStatus(poll.id, "published")}
+                          >
+                            Publier
+                          </button>
+                        )}
+                        {canManage && poll.status === "published" && (
+                          <button
+                            className="rpx-btn rpx-btn--sm"
+                            onClick={() => handleStatus(poll.id, "closed")}
+                          >
+                            Fermer
+                          </button>
+                        )}
+                        {canManage && (
+                          <button
+                            className="rpx-btn rpx-btn--sm rpx-btn--danger"
+                            onClick={() => handleDelete(poll.id)}
+                          >
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )
+      )}
+
+      {/* ── Onglet Analytiques ── */}
+      {tab === "analytics" && <PollAnalytics polls={polls} />}
     </div>
   );
 }
