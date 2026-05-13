@@ -180,11 +180,10 @@ function MainSite() {
   return (
     <div className="site">
 
-      {/* ── Hero compact — logo au sommet ── */}
+      <SiteNav />
+
+      {/* ── Hero compact ── */}
       <section id="accueil" className="hero">
-        <div className="hero-top-logo">
-          <img src="/logo_woltar.png" alt="Woltar" className="hero-top-logo-img" />
-        </div>
         <div className="hero-welcome">
           <h1 className="hero-welcome-title">
             {settings.hero_title || "Bienvenue sur Woltar"}
@@ -209,27 +208,27 @@ function MainSite() {
         </div>
       </section>
 
-      {/* ── Événement à la une ── */}
-      <EventSpotlight affiche={affiche} articles={allPublishedArticles} />
+      {/* ── Corps principal bleu (layout_corps Woltar.net) ── */}
+      <div className="corps">
 
-      {/* ── Carousel Band ── */}
-      <CarouselBand
-        slides={newsSlides}
-        currentIndex={currentNewsIndex}
-        setCurrentIndex={setCurrentNewsIndex}
-      />
+        {/* ── Événement à la une ── */}
+        <EventSpotlight affiche={affiche} articles={allPublishedArticles} />
 
-      {/* ── Derniers articles (grille éditoriale) ── */}
-      <LatestArticlesGrid articles={allPublishedArticles} />
+        {/* ── Carousel Band ── */}
+        <CarouselBand
+          slides={newsSlides}
+          currentIndex={currentNewsIndex}
+          setCurrentIndex={setCurrentNewsIndex}
+        />
 
-      {/* ── Portail catégories ── */}
-      <CategoriesPortal />
+        {/* ── Derniers articles (grille éditoriale) ── */}
+        <LatestArticlesGrid articles={allPublishedArticles} />
 
-      {/* ── Panneau nav — sous les catégories, 12px au-dessus du footer ── */}
-      <SiteNav />
+        {/* ── Portail catégories ── */}
+        <CategoriesPortal />
 
-      {/* ── Association ── */}
-      <Section id="association" title="Espace association">
+        {/* ── Association ── */}
+        <Section id="association" title="Espace association">
         <div className="association-access">
           <div className="association-access-panel">
             <div className="association-access-icon">◇</div>
@@ -283,6 +282,8 @@ function MainSite() {
           </div>
         </div>
       </Section>
+
+      </div>{/* ── /corps ── */}
 
       <footer>
         <p>© Woltar.com 2000–2022 — Woltar.net 2023–2026. Tous droits réservés.</p>

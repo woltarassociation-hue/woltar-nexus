@@ -43,13 +43,64 @@ body::before {
   overflow-x: hidden;
 }
 
+/* ─── CORPS — Panneau cyan principal, inspiré de layout_corps sur Woltar.net ─── */
+/* Fond rouge body → hero transparent → panneau cyan → cartes internes blanches/foncées */
+.corps {
+  position: relative;
+  isolation: isolate;
+  width: min(1160px, 96%);
+  margin: 0 auto 56px;
+  padding: 52px 0 20px;
+  background: linear-gradient(
+    180deg,
+    #46c7f4 0%,
+    #2ab8e8 40%,
+    #179ac7 100%
+  );
+  border-radius: 28px;
+  /* Bordure blanche interne style portail rétro */
+  border: 2px solid rgba(255, 255, 255, 0.78);
+  box-shadow:
+    0 12px 48px rgba(0, 100, 160, 0.38),
+    0 2px 0 rgba(255, 255, 255, 0.55) inset,
+    0 -1px 0 rgba(0, 80, 130, 0.22) inset;
+}
+
+/* Points blancs discrets — texture rétro portail 2006 */
+.corps::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  pointer-events: none;
+  z-index: -1;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.14) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+@media (max-width: 768px) {
+  .corps {
+    width: 100%;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 36px 0 8px;
+    margin-bottom: 0;
+  }
+  .corps::before {
+    border-radius: 0;
+  }
+}
+
 /* ─── BACKGROUND WOLTAR — géré sur body, universel ─── */
 
 /* ─── NAVBAR ─── */
 .navbar {
-  /* Panneau en flux normal — 12px au-dessus du footer */
-  position: relative;
-  margin: 0 auto 12px;
+  position: fixed;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
   width: min(1180px, 94%);
   padding: 0 20px;
   display: grid;
@@ -114,21 +165,22 @@ body::before {
   transform: scale(1.04);
 }
 
-/* Mobile dropdown — s'ouvre vers le HAUT (navbar en bas de page) */
+/* Mobile dropdown — s'ouvre vers le BAS (navbar en haut de page) */
 .nav-mobile {
   position: absolute;
-  bottom: calc(100% + 8px);
-  top: auto;
+  top: calc(100% + 8px);
+  bottom: auto;
   left: 0;
   right: 0;
-  background: linear-gradient(0deg, #2fb0da 0%, #1d9ec8 100%);
+  background: linear-gradient(180deg, #2fb0da 0%, #1d9ec8 100%);
   border: 2px solid rgba(255,255,255,0.75);
   border-radius: 12px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: 0 -6px 24px rgba(0,50,90,0.45);
+  box-shadow: 0 6px 24px rgba(0,50,90,0.45);
+  z-index: 200;
 }
 
 .nav-link {
@@ -210,28 +262,11 @@ body::before {
 /* ─── HERO ─── */
 .hero {
   min-height: 0;
-  padding: 56px 4% 56px;
+  padding: 168px 4% 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
-}
-
-.hero-top-logo {
-  text-align: center;
-  line-height: 0;
-}
-
-.hero-top-logo-img {
-  height: 130px;
-  filter: drop-shadow(0 4px 18px rgba(139,0,0,0.38));
-  transition: transform 0.3s ease, filter 0.3s ease;
-  animation: hero-fade-up 0.9s 0.05s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.hero-top-logo-img:hover {
-  transform: scale(1.05);
-  filter: drop-shadow(0 6px 24px rgba(31,168,220,0.50));
+  gap: 36px;
 }
 
 @keyframes hero-fade-up {
@@ -256,7 +291,7 @@ body::before {
   width: min(1080px, 92%);
   background: rgba(255, 252, 255, 0.93);
   border-radius: 28px;
-  padding: 44px 52px;
+  padding: 20px 52px;
   border: 1px solid rgba(139,0,0,0.1);
   text-align: center;
   overflow: hidden;
@@ -281,7 +316,7 @@ body::before {
   color: #9a0000;
   letter-spacing: -0.01em;
   line-height: 1.15;
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   text-shadow: 0 1px 6px rgba(139,0,0,0.15);
   animation: hero-fade-up 1s 0.25s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -300,7 +335,7 @@ body::before {
   font-size: 15px;
   color: #2a2535;
   line-height: 1.75;
-  margin-bottom: 24px;
+  margin-bottom: 18px;
   animation: hero-fade-up 1s 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -779,7 +814,7 @@ body::before {
 footer:not(.site-footer) {
   position: relative;
   overflow: hidden;
-  margin-top: 0;
+  margin-top: 70px;
   padding: 70px 20px 42px;
   text-align: center;
   color: rgba(255,255,255,0.65);
@@ -1004,72 +1039,55 @@ footer:not(.site-footer) p {
 
 /* ─── RESPONSIVE ─── */
 @media (max-width: 950px) {
-  /* Navbar en bas : scroll horizontal, pas de hamburger */
+  /* Navbar fixe en haut — mobile */
   .navbar {
-    display: flex;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: visible;
-    justify-content: flex-start;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 12px;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    transform: none;
+    padding: 6px 14px;
     border-radius: 12px;
-    width: calc(100% - 24px);
-    margin: 0 12px 12px;
-    /* Cache la scrollbar mais garde le scroll tactile */
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "hamburger logo";
   }
-  .navbar::-webkit-scrollbar { display: none; }
 
-  /* On affiche tous les liens en ligne */
+  .nav-hamburger { grid-area: hamburger; order: -1; display: flex; }
+  .nav-brand     { grid-area: logo; justify-self: center; }
+
   .nav-left,
   .nav-right {
-    display: contents; /* enfants directs dans le flex parent */
-  }
-
-  /* Hamburger inutile : nav en bas, tout visible via scroll */
-  .nav-hamburger {
     display: none;
   }
 
-  /* Logo plus petit, ne shrink pas */
-  .nav-brand {
-    flex-shrink: 0;
-    order: -1; /* logo en premier */
+  .nav-logo {
+    height: 68px;
   }
 
-  .nav-logo {
-    height: 56px;
+  .nav-wordmark {
+    display: none;
   }
 
   /* Touch targets 44px minimum */
   .nav-link {
-    flex-shrink: 0;
+    justify-content: flex-start;
     min-height: 44px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    white-space: nowrap;
-    justify-content: center;
+    padding: 11px 16px;
+    border-radius: 12px;
+    width: 100%;
+    font-size: 14px;
   }
 
   .nav-link--admin {
-    font-size: 13px;
-    padding: 10px 14px;
+    font-size: 14px;
+    padding: 11px 16px;
     text-transform: none;
     letter-spacing: 0;
   }
 
-  /* Hero : logo du haut + bienvenue */
-  .hero-top-logo-img {
-    height: 96px;
-  }
-
   .hero {
-    padding: 40px 4% 48px;
-    gap: 22px;
+    padding: 110px 4% 56px;
+    gap: 28px;
   }
 
   .hero-welcome {
@@ -1134,13 +1152,9 @@ footer:not(.site-footer) p {
 }
 
 @media (max-width: 600px) {
-  .hero-top-logo-img {
-    height: 80px;
-  }
-
   .hero {
-    padding: 28px 4% 40px;
-    gap: 18px;
+    padding: 100px 4% 44px;
+    gap: 24px;
   }
 
   .hero-welcome {
