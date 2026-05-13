@@ -5,6 +5,7 @@ import { getAffiche, saveAffiche, clearAffiche } from "../lib/affiche";
 import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
 import { getProfiles, saveProfile, deleteProfile, getSession, clearSession, ROLE_LABELS } from "../lib/profiles";
+import { getMemberSession, signOut as memberSignOut } from "../lib/auth.js";
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
@@ -158,10 +159,10 @@ export default function AssociationDashboard() {
   );
   const fileRef = useRef(null);
 
-  // Guard: Vérifier que c'est un admin
+  // Guard: Vérifier que c'est un admin (supporte l'ancienne session ET la session members)
   useEffect(() => {
-    const session = getSession();
-    if (!session || session.role !== "admin") {
+    const session = getSession() || getMemberSession();
+    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
       navigate("/");
     }
   }, [navigate]);
@@ -401,7 +402,7 @@ export default function AssociationDashboard() {
         <button
           className="db-logout-btn"
           title="Se déconnecter"
-          onClick={() => { clearSession(); navigate("/"); }}
+          onClick={() => { clearSession(); memberSignOut(); navigate("/"); }}
         >
           ⎋ Déconnexion
         </button>
@@ -1004,7 +1005,7 @@ function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
 const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "", password: "" };
 
 function ProfilesSection() {
-  const session = getSession();
+  const session = getSession() || getMemberSession();
   const [profiles, setProfiles] = useState(() => getProfiles());
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [editing, setEditing] = useState(false);
