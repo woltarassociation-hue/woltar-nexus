@@ -1,29 +1,83 @@
 import { supabase, withTimeout } from "./db.js";
 
-// ── Connexion / déconnexion ────────────────────────────────────────────────────
+// ── Session locale (table members) ────────────────────────────────────────────
 
-// Email interne dérivé du pseudo — jamais visible par l'utilisateur
+const SESSION_KEY = "woltar_member_session";
+
+export function getMemberSession() {
+  try { return JSON.parse(localStorage.getItem(SESSION_KEY)) ?? null; }
+  catch { return null; }
+}
+
+function setMemberSession(data) {
+  localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+}
+
+function clearMemberSession() {
+  localStorage.removeItem(SESSION_KEY);
+}
+
+// ── Connexion directe via la table members ─────────────────────────────────────
+
+export async function signInFromMembers(username, password) {
+  if (!supabase) {
+    return { user: null, error: "Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local" };
+  }
+
+  const pseudo = username.trim();
+  const pwd    = password.trim();
+
+  console.log("[Auth] Recherche dans members — pseudo:", pseudo);
+
+  let data, queryError;
+  try {
+    ({ data, error: queryError } = await withTimeout(
+      supabase.from("members").select("id, pseudo, password, role").eq("pseudo", pseudo).single()
+    ));
+  } catch (e) {
+    console.log("[Auth] Erreur requête:", e.message);
+    return { user: null, error: "Erreur de connexion. Réessayez." };
+  }
+
+  if (queryError || !data) {
+    console.log("[Auth] Aucun utilisateur trouvé pour pseudo =", pseudo, "|", queryError?.message);
+    return { user: null, error: "Pseudo ou mot de passe incorrect." };
+  }
+
+  console.log("[Auth] Utilisateur trouvé:", data.pseudo, "| rôle:", data.role);
+
+  const storedPwd = (data.password ?? "").trim();
+  if (storedPwd !== pwd) {
+    console.log("[Auth] Mot de passe incorrect (ne correspond pas à la valeur stockée)");
+    return { user: null, error: "Pseudo ou mot de passe incorrect." };
+  }
+
+  const session = {
+    id:       data.id,
+    pseudo:   data.pseudo,
+    role:     data.role,
+    authType: "members",
+  };
+
+  setMemberSession(session);
+  window.dispatchEvent(new Event("woltar:auth"));
+
+  console.log("[Auth] Connexion réussie:", data.pseudo, "— rôle:", data.role);
+  return { user: session, error: null };
+}
+
+// ── Déconnexion ────────────────────────────────────────────────────────────────
+
+export async function signOut() {
+  clearMemberSession();
+  window.dispatchEvent(new Event("woltar:auth"));
+  if (supabase) await supabase.auth.signOut();
+}
+
+// ── Supabase Auth (inscription, connexion via Auth) ────────────────────────────
+
 function pseudoToEmail(pseudo) {
   return `${pseudo.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_")}@woltar.nexus`;
-}
-
-export async function signIn(email, password) {
-  if (!supabase) {
-    return { user: null, error: "Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local" };
-  }
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { user: null, error: error.message };
-  return { user: data.user, error: null };
-}
-
-export async function signInWithUsername(username, password) {
-  if (!supabase) {
-    return { user: null, error: "Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local" };
-  }
-  const email = pseudoToEmail(username);
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { user: null, error: "Pseudo ou mot de passe incorrect." };
-  return { user: data.user, error: null };
 }
 
 export async function registerWithUsername(username, password) {
@@ -38,10 +92,6 @@ export async function registerWithUsername(username, password) {
   });
   if (error) return { user: null, error: error.message };
   return { user: data.user, error: null };
-}
-
-export async function signOut() {
-  if (supabase) await supabase.auth.signOut();
 }
 
 // ── Profil utilisateur ─────────────────────────────────────────────────────────

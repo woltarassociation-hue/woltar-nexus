@@ -1,21 +1,27 @@
 import { useState, useEffect } from "react";
 import {
-  getRoles, getPermissions, getRolePermissions, getUserRoles,
-  togglePermission, assignRole, removeRole,
-  getRolePermissionIds, getUserRoleIds,
+  getRoles,
+  getPermissions,
+  getRolePermissions,
+  getUserRoles,
+  togglePermission,
+  assignRole,
+  removeRole,
+  getRolePermissionIds,
+  getUserRoleIds,
 } from "../../lib/roles";
 import { getProfiles } from "../../lib/profiles";
 
+// ── Composant principal ────────────────────────────────────────
 export default function RolesSection() {
-  const [tab, setTab] = useState("roles");
-  const [roles, setRoles] = useState(() => getRoles());
-  const [perms, setPerms] = useState(() => getPermissions());
-  const [rolePerms, setRolePerms] = useState(() => getRolePermissions());
-  const [userRoles, setUserRoles] = useState(() => getUserRoles());
-  const [profiles, setProfiles] = useState(() => getProfiles());
+  const [tab, setTab]               = useState("permissions");
+  const [roles, setRoles]           = useState(() => getRoles());
+  const [perms, setPerms]           = useState(() => getPermissions());
+  const [rolePerms, setRolePerms]   = useState(() => getRolePermissions());
+  const [userRoles, setUserRoles]   = useState(() => getUserRoles());
+  const [profiles, setProfiles]     = useState(() => getProfiles());
   const [selectedRole, setSelectedRole] = useState(null);
-  const [saving, setSaving] = useState(null);
-  const [feedback, setFeedback] = useState(null);
+  const [saving, setSaving]         = useState(null);
 
   useEffect(() => {
     const refresh = () => {
@@ -24,9 +30,13 @@ export default function RolesSection() {
       setRolePerms(getRolePermissions());
       setUserRoles(getUserRoles());
     };
+    const refreshProfiles = () => setProfiles(getProfiles());
     window.addEventListener("woltar:roles", refresh);
-    window.addEventListener("woltar:profiles", () => setProfiles(getProfiles()));
-    return () => window.removeEventListener("woltar:roles", refresh);
+    window.addEventListener("woltar:profiles", refreshProfiles);
+    return () => {
+      window.removeEventListener("woltar:roles", refresh);
+      window.removeEventListener("woltar:profiles", refreshProfiles);
+    };
   }, []);
 
   // Grouper les permissions par groupe
@@ -51,7 +61,9 @@ export default function RolesSection() {
   };
 
   const handleAssignRole = async (profileId, roleId) => {
-    const already = userRoles.some((ur) => ur.profile_id === profileId && ur.role_id === roleId);
+    const already = userRoles.some(
+      (ur) => ur.profile_id === profileId && ur.role_id === roleId
+    );
     setSaving(`${profileId}-${roleId}`);
     if (already) await removeRole(profileId, roleId);
     else await assignRole(profileId, roleId);
@@ -59,127 +71,172 @@ export default function RolesSection() {
   };
 
   return (
-    <div className="adm-wrap">
-      <div className="adm-inner">
-        <h2 className="adm-title">Rôles & Permissions</h2>
+    <div className="rpx-panel">
+      {/* Header */}
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ RÔLES & PERMISSIONS</h2>
+      </div>
 
-        <div className="adm-tabs">
-          <button className={`adm-tab${tab === "roles" ? " adm-tab--active" : ""}`} onClick={() => setTab("roles")}>🔐 Permissions par rôle</button>
-          <button className={`adm-tab${tab === "users" ? " adm-tab--active" : ""}`} onClick={() => setTab("users")}>👥 Utilisateurs</button>
-        </div>
+      {/* Onglets */}
+      <div className="rpx-tabs">
+        <button
+          className={`rpx-tab${tab === "permissions" ? " rpx-tab--active" : ""}`}
+          onClick={() => setTab("permissions")}
+        >
+          Permissions
+        </button>
+        <button
+          className={`rpx-tab${tab === "users" ? " rpx-tab--active" : ""}`}
+          onClick={() => setTab("users")}
+        >
+          Utilisateurs
+        </button>
+      </div>
 
-        {/* ── Onglet Rôles & permissions ── */}
-        {tab === "roles" && (
-          <div className="adm-roles-layout">
-            {/* Liste des rôles */}
-            <div className="adm-roles-sidebar">
-              <p className="adm-sidebar-label">Rôles</p>
-              {roles.map((r) => (
-                <button
-                  key={r.id}
-                  className={`adm-role-btn${currentRole?.id === r.id ? " adm-role-btn--active" : ""}`}
-                  onClick={() => setSelectedRole(r)}
-                  style={{ "--role-color": r.color }}
-                >
-                  <span className="adm-role-dot" style={{ background: r.color }} />
-                  <span>{r.label}</span>
-                  <span className="adm-role-level">niv.{r.level}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* Matrice des permissions */}
-            <div className="adm-perms-panel">
-              {currentRole && (
-                <>
-                  <div className="adm-perms-header">
-                    <span className="adm-role-badge" style={{ background: currentRole.color }}>
-                      {currentRole.label}
-                    </span>
-                    <span className="adm-perms-hint">Cochez les permissions actives pour ce rôle</span>
-                  </div>
-                  {Object.entries(permGroups).map(([group, groupPerms]) => (
-                    <div key={group} className="adm-perm-group">
-                      <div className="adm-perm-group-label">{group}</div>
-                      {groupPerms.map((p) => {
-                        const active = hasPerm(currentRole.id, p.id);
-                        return (
-                          <label key={p.id} className={`adm-perm-row${active ? " adm-perm-row--active" : ""}`}>
-                            <input
-                              type="checkbox"
-                              checked={active}
-                              disabled={saving === p.id}
-                              onChange={() => handleTogglePerm(p.id)}
-                            />
-                            <span className="adm-perm-label">{p.label}</span>
-                            {saving === p.id && <span className="adm-spinner" />}
-                          </label>
-                        );
-                      })}
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
+      {/* ── Onglet Permissions ── */}
+      {tab === "permissions" && (
+        <div className="rpx-roles-layout">
+          {/* Sidebar rôles */}
+          <div className="rpx-roles-sidebar">
+            <p className="rpx-sidebar-label">Rôles</p>
+            {roles.map((r) => (
+              <button
+                key={r.id}
+                className={`rpx-role-btn${currentRole?.id === r.id ? " rpx-role-btn--active" : ""}`}
+                onClick={() => setSelectedRole(r)}
+                style={{ "--role-color": r.color }}
+              >
+                <span className="rpx-role-dot" style={{ background: r.color }} />
+                <span className="rpx-role-btn-label">{r.label}</span>
+                <span className="rpx-role-level">niv.{r.level}</span>
+              </button>
+            ))}
           </div>
-        )}
 
-        {/* ── Onglet Utilisateurs ── */}
-        {tab === "users" && (
-          <div className="adm-users-list">
-            {profiles.length === 0 && (
-              <p style={{ color: "#99aabb", fontStyle: "italic", textAlign: "center", padding: 40 }}>
-                Aucun profil trouvé.
-              </p>
+          {/* Panel permissions */}
+          <div className="rpx-perms-panel">
+            {currentRole ? (
+              <>
+                <div className="rpx-perms-header">
+                  <span
+                    className="rpx-role-badge"
+                    style={{ background: currentRole.color }}
+                  >
+                    {currentRole.label}
+                  </span>
+                  <span className="rpx-perms-hint">
+                    Cochez les permissions actives pour ce rôle
+                  </span>
+                </div>
+
+                {Object.entries(permGroups).map(([group, groupPerms]) => (
+                  <div key={group} className="rpx-perm-group">
+                    <div className="rpx-perm-group-label">{group}</div>
+                    {groupPerms.map((p) => {
+                      const active = hasPerm(currentRole.id, p.id);
+                      return (
+                        <label
+                          key={p.id}
+                          className={`rpx-perm-row${active ? " rpx-perm-row--active" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={active}
+                            disabled={saving === p.id}
+                            onChange={() => handleTogglePerm(p.id)}
+                          />
+                          <span className="rpx-perm-label">{p.label}</span>
+                          {saving === p.id && (
+                            <span className="rpx-spinner" />
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
+              </>
+            ) : (
+              <div className="rpx-empty">Sélectionnez un rôle.</div>
             )}
-            {profiles.map((p) => {
+          </div>
+        </div>
+      )}
+
+      {/* ── Onglet Utilisateurs ── */}
+      {tab === "users" && (
+        <div className="rpx-users-list">
+          {profiles.length === 0 ? (
+            <div className="rpx-empty">Aucun profil trouvé.</div>
+          ) : (
+            profiles.map((p) => {
               const assigned = userRoles.filter((ur) => ur.profile_id === p.id);
               return (
-                <div key={p.id} className="adm-user-row">
-                  <div className="adm-user-avatar">
-                    {p.avatar ? <img src={p.avatar} alt="" /> : <span>{(p.username || p.pseudo || "?")[0].toUpperCase()}</span>}
+                <div key={p.id} className="rpx-user-row">
+                  <div className="rpx-user-avatar">
+                    {p.avatar ? (
+                      <img src={p.avatar} alt="" />
+                    ) : (
+                      <span>
+                        {(p.username || p.pseudo || "?")[0].toUpperCase()}
+                      </span>
+                    )}
                   </div>
-                  <div className="adm-user-info">
-                    <span className="adm-user-name">{p.username || p.pseudo || "Sans nom"}</span>
-                    <span className="adm-user-role-badge" style={{ background: "rgba(139,0,0,0.1)", color: "#8b0000" }}>
-                      {p.role || "—"}
+
+                  <div className="rpx-user-info">
+                    <span className="rpx-user-name">
+                      {p.username || p.pseudo || "Sans nom"}
                     </span>
+                    {p.role && (
+                      <span className="rpx-user-role-badge">{p.role}</span>
+                    )}
                   </div>
-                  <div className="adm-user-roles-assigned">
+
+                  <div className="rpx-user-roles-assigned">
                     {assigned.map((ur) => {
                       const role = roles.find((r) => r.id === ur.role_id);
                       return role ? (
                         <span
                           key={ur.role_id}
-                          className="adm-user-role-tag"
-                          style={{ background: role.color + "22", color: role.color, borderColor: role.color + "44" }}
+                          className="rpx-role-tag"
+                          style={{
+                            background:   role.color + "22",
+                            color:        role.color,
+                            borderColor:  role.color + "44",
+                          }}
                         >
                           {role.label}
                           <button
-                            className="adm-user-role-rm"
+                            className="rpx-role-tag-rm"
                             onClick={() => handleAssignRole(p.id, ur.role_id)}
                             disabled={saving === `${p.id}-${ur.role_id}`}
-                          >×</button>
+                          >
+                            ×
+                          </button>
                         </span>
                       ) : null;
                     })}
+
                     <select
-                      className="adm-user-role-add"
+                      className="rpx-input rpx-input--sm"
                       value=""
-                      onChange={(e) => e.target.value && handleAssignRole(p.id, e.target.value)}
+                      onChange={(e) =>
+                        e.target.value && handleAssignRole(p.id, e.target.value)
+                      }
                     >
                       <option value="">+ Rôle</option>
-                      {roles.filter((r) => !assigned.some((ur) => ur.role_id === r.id)).map((r) => (
-                        <option key={r.id} value={r.id}>{r.label}</option>
-                      ))}
+                      {roles
+                        .filter((r) => !assigned.some((ur) => ur.role_id === r.id))
+                        .map((r) => (
+                          <option key={r.id} value={r.id}>{r.label}</option>
+                        ))}
                     </select>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
-      </div>
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 }
