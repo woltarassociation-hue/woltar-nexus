@@ -1,7 +1,6 @@
 import { supabase, withTimeout, toDb, fromDb } from "./db.js";
 
 const KEY = "woltar_members";
-const SESSION_KEY = "woltar_member_session";
 
 let _cache = null;
 
@@ -32,7 +31,6 @@ async function loadFromSupabase() {
   }
 }
 
-// Auto-init + realtime
 if (supabase) {
   loadFromSupabase();
   supabase
@@ -45,11 +43,17 @@ export function getMemberById(id) {
   return getAllMembers().find((m) => m.id === id) || null;
 }
 
+export function getMemberByAuthId(authId) {
+  return getAllMembers().find((m) => m.authId === authId || m.auth_id === authId) || null;
+}
+
 export async function upsertMember(data) {
+  // Never persist password — auth is handled by Supabase Auth
+  const { password, password_hash, ...safeData } = data;
   const all = getAllMembers();
-  const id = data.id || crypto.randomUUID();
+  const id = safeData.id || crypto.randomUUID();
   const now = new Date().toISOString();
-  const record = { ...data, id, updatedAt: now, createdAt: data.createdAt || now };
+  const record = { ...safeData, id, updatedAt: now, createdAt: safeData.createdAt || now };
   const idx = all.findIndex((m) => m.id === id);
   if (idx >= 0) all[idx] = record; else all.unshift(record);
   _cache = all;
@@ -78,16 +82,6 @@ export async function deleteMember(id) {
   }
 }
 
-export function authenticateMember(pseudo, password) {
-  return (
-    getAllMembers().find(
-      (m) =>
-        m.pseudo.trim().toLowerCase() === pseudo.trim().toLowerCase() &&
-        m.password === password
-    ) || null
-  );
-}
-
 export function pseudoExists(pseudo, excludeId = null) {
   return getAllMembers().some(
     (m) =>
@@ -96,29 +90,9 @@ export function pseudoExists(pseudo, excludeId = null) {
   );
 }
 
-export function setMemberSession(member) {
-  localStorage.setItem(
-    SESSION_KEY,
-    JSON.stringify({
-      id: member.id,
-      pseudo: member.pseudo,
-      role: member.role || "membre",
-      avatar: member.avatar || null,
-    })
-  );
-}
-
-export function getMemberSession() {
-  try { return JSON.parse(localStorage.getItem(SESSION_KEY) || "null"); } catch { return null; }
-}
-
-export function clearMemberSession() {
-  localStorage.removeItem(SESSION_KEY);
-}
-
 export const MEMBER_ROLE_LABELS = {
-  membre: "Membre",
+  membre:     "Membre",
   moderateur: "Modérateur",
-  artiste: "Artiste",
-  conteur: "Conteur",
+  artiste:    "Artiste",
+  conteur:    "Conteur",
 };

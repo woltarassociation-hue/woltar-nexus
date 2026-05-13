@@ -10,9 +10,9 @@ const LEFT_LINKS = [
 ];
 
 const RIGHT_LINKS = [
-  { label: "Fan-arts", icon: "🎨", to: "/fanarts",  isHash: false },
-  { label: "RP",       icon: "🎭", to: "/rp",       isHash: false },
-  { label: "Tickets",  icon: "🎫", to: "/tickets",  isHash: false },
+  { label: "Fan-arts",  icon: "🎨", to: "/fanarts",   isHash: false },
+  { label: "Sondages",  icon: "📊", to: "/sondages",  isHash: false },
+  { label: "Tickets",   icon: "🎫", to: "/tickets",   isHash: false },
 ];
 
 function NavLink({ link, active, onClick }) {

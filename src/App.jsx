@@ -3,6 +3,8 @@ import { Routes, Route, useNavigate, useParams, Link } from "react-router-dom";
 import AssociationDashboard from "./components/AssociationDashboard.jsx";
 import SiteNav from "./components/SiteNav.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import LocalStorageBanner from "./components/LocalStorageBanner.jsx";
+import AnnouncementPopup from "./components/AnnouncementPopup.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import SubCategoryPage from "./pages/SubCategoryPage.jsx";
@@ -12,6 +14,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import TicketsPage from "./pages/TicketsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
+import PollsPage from "./pages/PollsPage.jsx";
 import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
 import { seedDefaultProfiles } from "./lib/profiles.js";
@@ -102,25 +105,30 @@ function ArticleOrSubcat() {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<MainSite />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/setup" element={<SetupPage />} />
-      <Route path="/inscription" element={<RegisterPage />} />
-      <Route path="/compte" element={<AccountPage />} />
-      <Route
-        path="/association/dashboard"
-        element={
-          <ProtectedRoute requireAdmin>
-            <AssociationDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route path="/tickets" element={<TicketsPage />} />
-      <Route path="/formulaire/:formId" element={<FormPage />} />
-      <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
-      <Route path="/:category" element={<CategoryPage />} />
-    </Routes>
+    <>
+      <AnnouncementPopup />
+      <LocalStorageBanner />
+      <Routes>
+        <Route path="/" element={<MainSite />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/setup" element={<SetupPage />} />
+        <Route path="/inscription" element={<RegisterPage />} />
+        <Route path="/compte" element={<AccountPage />} />
+        <Route path="/sondages" element={<PollsPage />} />
+        <Route
+          path="/association/dashboard"
+          element={
+            <ProtectedRoute requireAdmin>
+              <AssociationDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/tickets" element={<TicketsPage />} />
+        <Route path="/formulaire/:formId" element={<FormPage />} />
+        <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
+        <Route path="/:category" element={<CategoryPage />} />
+      </Routes>
+    </>
   );
 }
 

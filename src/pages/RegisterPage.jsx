@@ -1,45 +1,52 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { upsertMember, setMemberSession, pseudoExists } from "../lib/members";
+import { registerWithUsername } from "../lib/auth.js";
+import { upsertMember, pseudoExists } from "../lib/members";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
 
-  const [pseudo, setPseudo] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
+  const [pseudo, setPseudo]         = useState("");
+  const [password, setPassword]     = useState("");
+  const [confirm, setConfirm]       = useState("");
   const [woltarien1, setWoltarien1] = useState("");
   const [woltarien2, setWoltarien2] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [error, setError] = useState("");
-  const [done, setDone] = useState(false);
+  const [showPass, setShowPass]     = useState(false);
+  const [error, setError]           = useState("");
+  const [loading, setLoading]       = useState(false);
+  const [done, setDone]             = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    if (!pseudo.trim()) { setError("Le pseudo est requis."); return; }
-    if (pseudoExists(pseudo)) { setError("Ce pseudo est déjà utilisé."); return; }
-    if (password.length < 6) { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
-    if (password !== confirm) { setError("Les mots de passe ne correspondent pas."); return; }
-    if (!woltarien1.trim()) { setError("Indique au moins un personnage woltarien."); return; }
+    if (!pseudo.trim())               { setError("Le pseudo est requis."); return; }
+    if (pseudoExists(pseudo))         { setError("Ce pseudo est déjà utilisé."); return; }
+    if (password.length < 6)          { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
+    if (password !== confirm)         { setError("Les mots de passe ne correspondent pas."); return; }
+    if (!woltarien1.trim())           { setError("Indique au moins un personnage woltarien."); return; }
 
-    const member = upsertMember({
-      pseudo: pseudo.trim(),
-      password,
+    setLoading(true);
+    const { user, error: authErr } = await registerWithUsername(pseudo.trim(), password);
+    if (authErr) { setError(authErr); setLoading(false); return; }
+
+    // Enregistrer les données communauté (sans mot de passe)
+    await upsertMember({
+      id:         user?.id || crypto.randomUUID(),
+      authId:     user?.id || null,
+      pseudo:     pseudo.trim(),
       woltarien1: woltarien1.trim(),
       woltarien2: woltarien2.trim() || null,
-      avatar: null,
-      role: "membre",
+      avatar:     null,
+      role:       "membre",
     });
 
-    setMemberSession(member);
+    setLoading(false);
     setDone(true);
   };
 
   return (
     <div className="setup-page">
-
       <div className="setup-glow setup-glow--red" />
       <div className="setup-glow setup-glow--blue" />
 
@@ -81,7 +88,7 @@ export default function RegisterPage() {
                   onChange={(e) => { setPseudo(e.target.value); setError(""); }}
                   placeholder="Ton pseudo en jeu"
                   autoFocus
-                  autoComplete="off"
+                  autoComplete="username"
                 />
               </div>
 
@@ -131,7 +138,9 @@ export default function RegisterPage() {
               </div>
 
               <div className="setup-field">
-                <label className="setup-label">Woltarien(ne) secondaire <span className="reg-optional">(optionnel)</span></label>
+                <label className="setup-label">
+                  Woltarien(ne) secondaire <span className="reg-optional">(optionnel)</span>
+                </label>
                 <input
                   className="setup-input"
                   type="text"
@@ -143,15 +152,14 @@ export default function RegisterPage() {
 
               {error && <p className="setup-error">{error}</p>}
 
-              <button type="submit" className="setup-btn setup-btn--full">
-                Créer mon compte →
+              <button
+                type="submit"
+                className="setup-btn setup-btn--full"
+                disabled={loading}
+              >
+                {loading ? "Création du compte…" : "Créer mon compte →"}
               </button>
             </form>
-
-            <p className="setup-notice">
-              Les données sont stockées localement sur cet appareil.<br />
-              Ton compte te permet d'accéder à l'univers Woltar.
-            </p>
           </>
         )}
       </div>

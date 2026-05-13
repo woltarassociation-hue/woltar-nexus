@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { signIn } from "../lib/auth.js";
+import { signInWithUsername } from "../lib/auth.js";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const redirectTo = location.state?.from?.pathname || "/association/dashboard";
 
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,7 +16,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    const { error: err } = await signIn(email, password);
+    const { error: err } = await signInWithUsername(username, password);
     setLoading(false);
     if (err) { setError(err); return; }
     navigate(redirectTo, { replace: true });
@@ -30,19 +30,19 @@ export default function LoginPage() {
         </Link>
         <h1 className="login-title">Espace membres</h1>
         <p className="login-subtitle">
-          Connectez-vous avec votre email pour accéder à vos outils.
+          Connectez-vous avec votre pseudo pour accéder à vos outils.
         </p>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="assoc-field">
-            <label className="assoc-label">Email</label>
+            <label className="assoc-label">Pseudo</label>
             <input
               className="assoc-input"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setError(""); }}
-              placeholder="votre@email.fr"
+              type="text"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => { setUsername(e.target.value); setError(""); }}
+              placeholder="votre_pseudo"
               required
             />
           </div>

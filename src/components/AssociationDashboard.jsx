@@ -15,6 +15,9 @@ import ParametresSection  from "./admin/ParametresSection";
 import CategoriesSection  from "./admin/CategoriesSection";
 import RolesSection       from "./admin/RolesSection";
 import MediathequeSection from "./admin/MediathequeSection";
+import PollsSection       from "./admin/PollsSection";
+import PopupsSection      from "./admin/PopupsSection";
+import StatsSection       from "./admin/StatsSection";
 
 const stripHtml = (html) =>
   (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -376,6 +379,24 @@ export default function AssociationDashboard() {
           >
             🖼 Médiathèque
           </button>
+          <button
+            className={`db-nav-btn${section === "sondages" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("sondages")}
+          >
+            📊 Sondages
+          </button>
+          <button
+            className={`db-nav-btn${section === "annonces" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("annonces")}
+          >
+            📢 Annonces
+          </button>
+          <button
+            className={`db-nav-btn${section === "stats" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("stats")}
+          >
+            📈 Statistiques
+          </button>
         </div>
         <button
           className="db-logout-btn"
@@ -409,6 +430,9 @@ export default function AssociationDashboard() {
       {section === "categories"   && <CategoriesSection />}
       {section === "roles"        && <RolesSection />}
       {section === "mediatheque"  && <MediathequeSection />}
+      {section === "sondages"     && <PollsSection />}
+      {section === "annonces"     && <PopupsSection />}
+      {section === "stats"        && <StatsSection />}
 
       <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
