@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { getSession } from "../lib/profiles";
+import { useAuth } from "../hooks/useAuth.jsx";
 
 const LEFT_LINKS = [
   { label: "Accueil",    icon: "🏠",  to: "/",            isHash: false },
@@ -35,21 +35,9 @@ function NavLink({ link, active, onClick }) {
 
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
-  const [adminSession, setAdminSession] = useState(() => getSession());
   const { pathname } = useLocation();
+  const { isAdmin } = useAuth();
   const close = () => setOpen(false);
-
-  useEffect(() => {
-    const refresh = () => setAdminSession(getSession());
-    window.addEventListener("woltar:profiles", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("woltar:profiles", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-
-  const isAdmin = Boolean(adminSession && adminSession.role === "admin");
 
   return (
     <header className="navbar">

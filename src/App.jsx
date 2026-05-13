@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Routes, Route, useNavigate, useParams, Link } from "react-router-dom";
 import AssociationDashboard from "./components/AssociationDashboard.jsx";
 import SiteNav from "./components/SiteNav.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import CategoryPage from "./pages/CategoryPage.jsx";
 import ArticlePage from "./pages/ArticlePage.jsx";
 import SubCategoryPage from "./pages/SubCategoryPage.jsx";
@@ -10,9 +11,10 @@ import SetupPage from "./pages/SetupPage.jsx";
 import RegisterPage from "./pages/RegisterPage.jsx";
 import AccountPage from "./pages/AccountPage.jsx";
 import TicketsPage from "./pages/TicketsPage.jsx";
+import LoginPage from "./pages/LoginPage.jsx";
 import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
-import { authenticate, setSession, seedDefaultProfiles } from "./lib/profiles.js";
+import { seedDefaultProfiles } from "./lib/profiles.js";
 import { getAffiche, loadAffiche } from "./lib/affiche.js";
 import { getSettings, settingsReady } from "./lib/settings.js";
 
@@ -102,10 +104,18 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<MainSite />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="/setup" element={<SetupPage />} />
       <Route path="/inscription" element={<RegisterPage />} />
       <Route path="/compte" element={<AccountPage />} />
-      <Route path="/association/dashboard" element={<AssociationDashboard />} />
+      <Route
+        path="/association/dashboard"
+        element={
+          <ProtectedRoute requireAdmin>
+            <AssociationDashboard />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/tickets" element={<TicketsPage />} />
       <Route path="/formulaire/:formId" element={<FormPage />} />
       <Route path="/:category/:slug" element={<ArticleOrSubcat />} />
@@ -117,11 +127,7 @@ export default function App() {
 /* ── Page d'accueil ───────────────────────────────────────── */
 
 function MainSite() {
-  const navigate = useNavigate();
   const [currentNewsIndex, setCurrentNewsIndex] = useState(0);
-  const [assocUser, setAssocUser] = useState("");
-  const [assocPass, setAssocPass] = useState("");
-  const [assocError, setAssocError] = useState(false);
 
   const [settings, setSettings] = useState(() => getSettings());
   useEffect(() => {
@@ -228,60 +234,23 @@ function MainSite() {
         <CategoriesPortal />
 
         {/* ── Association ── */}
-        <Section id="association" title="Espace association">
-        <div className="association-access">
-          <div className="association-access-panel">
-            <div className="association-access-icon">◇</div>
-            <div className="association-access-title">Accès membres</div>
-            <form
-              className="association-login-form"
-              onSubmit={(e) => {
-                e.preventDefault();
-                const profile = authenticate(assocUser, assocPass);
-                if (profile) {
-                  setSession(profile);
-                  navigate("/association/dashboard");
-                } else {
-                  setAssocError(true);
-                  setAssocPass("");
-                }
-              }}
-            >
-              <div className="assoc-field">
-                <label className="assoc-label">Identifiant</label>
-                <input
-                  className="assoc-input"
-                  type="text"
-                  autoComplete="username"
-                  value={assocUser}
-                  onChange={(e) => { setAssocUser(e.target.value); setAssocError(false); }}
-                  placeholder="Votre identifiant"
-                />
-              </div>
-              <div className="assoc-field">
-                <label className="assoc-label">Mot de passe</label>
-                <input
-                  className="assoc-input"
-                  type="password"
-                  autoComplete="current-password"
-                  value={assocPass}
-                  onChange={(e) => { setAssocPass(e.target.value); setAssocError(false); }}
-                  placeholder="••••••••"
-                />
-              </div>
-              {assocError && (
-                <p className="assoc-error">Identifiants incorrects.</p>
-              )}
-              <button type="submit" className="association-login-btn">
-                Ouvrir le tableau de bord →
-              </button>
-            </form>
-            <Link to="/inscription" className="assoc-register-link">
-              S'enregistrer
-            </Link>
+        <Section id="association" title="Espace membres">
+          <div className="association-access">
+            <div className="association-access-panel">
+              <div className="association-access-icon">◇</div>
+              <div className="association-access-title">Accès membres</div>
+              <p className="association-access-desc">
+                Connectez-vous pour accéder à votre espace et à vos outils selon votre rôle dans la communauté.
+              </p>
+              <Link to="/login" className="association-login-btn">
+                Se connecter →
+              </Link>
+              <Link to="/inscription" className="assoc-register-link">
+                S'enregistrer
+              </Link>
+            </div>
           </div>
-        </div>
-      </Section>
+        </Section>
 
       </div>{/* ── /corps ── */}
 
