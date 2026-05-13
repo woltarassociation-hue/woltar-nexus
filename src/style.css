@@ -4120,7 +4120,8 @@ footer:not(.site-footer) p {
 
 .db-header-nav {
   display: flex;
-  gap: 6px;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .db-nav-btn {
@@ -4145,6 +4146,12 @@ footer:not(.site-footer) p {
   background: #8b0000;
   border-color: #8b0000;
   color: #fff;
+}
+
+.db-nav-btn--disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -10622,5 +10629,82 @@ footer:not(.site-footer) p {
     border-radius: 8px 8px 0 0;
   }
   .artmgr-layout { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HUB CARDS — Studio / Profils & Accès
+═══════════════════════════════════════════════════════════════ */
+
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.hub-card {
+  background: #fff;
+  border: 2px solid #cce8f4;
+  border-radius: 10px;
+  padding: 20px 44px 18px 18px;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+  font-family: Verdana, sans-serif;
+  transition: transform 0.1s, box-shadow 0.1s, border-color 0.12s;
+  box-shadow: 2px 2px 0 0 rgba(0,0,0,0.07);
+}
+
+.hub-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 0 rgba(0,0,0,0.13);
+  border-color: #1fa8dc;
+}
+
+.hub-card__icon {
+  font-size: 26px;
+  display: block;
+  margin-bottom: 6px;
+  line-height: 1;
+}
+
+.hub-card__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #8b0000;
+  display: block;
+}
+
+.hub-card__sub {
+  font-size: 11px;
+  color: #5a7a8a;
+  display: block;
+}
+
+.hub-card__arrow {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  font-size: 18px;
+  color: rgba(31,168,220,0.35);
+  transition: color 0.12s, right 0.1s;
+}
+
+.hub-card:hover .hub-card__arrow {
+  color: #1fa8dc;
+  right: 10px;
+}
+
+@media (max-width: 900px) {
+  .hub-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+}
+
+@media (max-width: 600px) {
+  .hub-grid { grid-template-columns: 1fr 1fr; }
+  .hub-card { padding: 14px 36px 12px 14px; }
 }
 

@@ -144,11 +144,76 @@ const EMPTY_FORM = {
   bgColor: "#fdf5f8",
 };
 
+/* ── Studio Hub ─────────────────────────────────────────── */
+
+function StudioHub({ setView, drafts }) {
+  const all       = getAllArticles();
+  const published = all.filter((a) => a.status === "published").length;
+  const CARDS = [
+    { icon: "✍️", label: "Nouvel article",     sub: "Ouvrir l'éditeur vide",      view: "editeur" },
+    { icon: "📰", label: "Mes articles",        sub: `${published} publié${published !== 1 ? "s" : ""}`, view: "articles" },
+    { icon: "✏️", label: "Brouillons",          sub: `${drafts.length} en cours`,  view: "brouillons" },
+    { icon: "🖼",  label: "Affiche événement",  sub: "Mise en avant accueil",      view: "affiche" },
+    { icon: "🎭",  label: "Candidatures RP",    sub: "Dossiers candidatures",      view: "candidatures" },
+    { icon: "📝",  label: "Formulaires RP",     sub: "Formulaires & réponses",     view: "formulaires" },
+    { icon: "📊",  label: "Sondages",           sub: "Votes & statistiques",       view: "sondages" },
+    { icon: "🗂",  label: "Catégories",         sub: "Organisation du contenu",    view: "categories" },
+  ];
+  return (
+    <div className="rpx-panel">
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ STUDIO</h2>
+        <p className="rpx-page-subtitle">Sélectionnez une section de contenu</p>
+      </div>
+      <div className="hub-grid">
+        {CARDS.map((c) => (
+          <button key={c.view} className="hub-card" onClick={() => setView(c.view)}>
+            <span className="hub-card__icon">{c.icon}</span>
+            <span className="hub-card__label">{c.label}</span>
+            <span className="hub-card__sub">{c.sub}</span>
+            <span className="hub-card__arrow">→</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ── Profils Hub ─────────────────────────────────────────── */
+
+function ProfilsHub({ setView }) {
+  const CARDS = [
+    { icon: "👥", label: "Profils & Accès",     sub: "Comptes du tableau de bord", view: "profils" },
+    { icon: "🧑‍🤝‍🧑", label: "Membres inscrits",  sub: "Comptes de la communauté",   view: "membres" },
+    { icon: "🔐", label: "Rôles & Permissions", sub: "Droits et niveaux d'accès",   view: "roles" },
+  ];
+  return (
+    <div className="rpx-panel">
+      <div className="rpx-panel-header">
+        <h2 className="rpx-page-title">◈ PROFILS & ACCÈS</h2>
+        <p className="rpx-page-subtitle">Gestion des utilisateurs et des droits</p>
+      </div>
+      <div className="hub-grid">
+        {CARDS.map((c) => (
+          <button key={c.view} className="hub-card" onClick={() => setView(c.view)}>
+            <span className="hub-card__icon">{c.icon}</span>
+            <span className="hub-card__label">{c.label}</span>
+            <span className="hub-card__sub">{c.sub}</span>
+            <span className="hub-card__arrow">→</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Main component ──────────────────────────────────────── */
 
 export default function AssociationDashboard() {
   const navigate = useNavigate();
-  const [section, setSection] = useState("studio");
+  const [section, setSection]         = useState("studio");
+  const [studioView, setStudioView]   = useState("hub");
+  const [profilsView, setProfilsView] = useState("hub");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editorTab, setEditorTab] = useState("content");
   const [saving, setSaving] = useState(false);
@@ -283,11 +348,13 @@ export default function AssociationDashboard() {
     if (isDirty && !window.confirm("Réinitialiser le formulaire ?")) return;
     setForm(EMPTY_FORM);
     setFeedback(null);
+    setStudioView("articles");
   };
 
   const handleEditArticle = (article) => {
     loadDraft(article);
     setSection("studio");
+    setStudioView("editeur");
     window.scrollTo(0, 0);
   };
 
@@ -303,76 +370,27 @@ export default function AssociationDashboard() {
         <div className="db-header-brand">
           <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
           <span className="db-header-title">
-            {{ studio: "Studio de publication", articles: "Mes articles", candidatures: "Candidatures RP", affiche: "Affiche événement", profils: "Profils & Accès", membres: "Membres", formulaires: "Formulaires RP", tickets: "Tickets", parametres: "Paramètres", categories: "Catégories", roles: "Rôles & Permissions", mediatheque: "Médiathèque" }[section]}
+            {({ studio: "Studio", profils: "Profils & Accès", tickets: "Tickets", mediatheque: "Médiathèque", annonces: "Annonces", stats: "Statistiques", parametres: "Paramètres" })[section] || "Admin"}
           </span>
         </div>
         <div className="db-header-nav">
           <button
             className={`db-nav-btn${section === "studio" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("studio")}
+            onClick={() => { setSection("studio"); setStudioView("hub"); }}
           >
             ✏ Studio
           </button>
           <button
-            className={`db-nav-btn${section === "articles" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("articles")}
-          >
-            📰 Mes articles
-          </button>
-          <button
-            className={`db-nav-btn${section === "candidatures" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("candidatures")}
-          >
-            🎭 Candidatures RP
-          </button>
-          <button
-            className={`db-nav-btn${section === "affiche" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("affiche")}
-          >
-            🖼 Affiche événement
-          </button>
-          <button
             className={`db-nav-btn${section === "profils" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("profils")}
+            onClick={() => { setSection("profils"); setProfilsView("hub"); }}
           >
-            👥 Profils
-          </button>
-          <button
-            className={`db-nav-btn${section === "membres" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("membres")}
-          >
-            🧑‍🤝‍🧑 Membres
-          </button>
-          <button
-            className={`db-nav-btn${section === "formulaires" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("formulaires")}
-          >
-            📝 Formulaires
+            👥 Profils & Accès
           </button>
           <button
             className={`db-nav-btn${section === "tickets" ? " db-nav-btn--active" : ""}`}
             onClick={() => setSection("tickets")}
           >
             🎫 Tickets
-          </button>
-          <div className="db-nav-sep" />
-          <button
-            className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("parametres")}
-          >
-            ⚙ Paramètres
-          </button>
-          <button
-            className={`db-nav-btn${section === "categories" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("categories")}
-          >
-            🗂 Catégories
-          </button>
-          <button
-            className={`db-nav-btn${section === "roles" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("roles")}
-          >
-            🔐 Rôles
           </button>
           <button
             className={`db-nav-btn${section === "mediatheque" ? " db-nav-btn--active" : ""}`}
@@ -381,14 +399,9 @@ export default function AssociationDashboard() {
             🖼 Médiathèque
           </button>
           <button
-            className={`db-nav-btn${section === "sondages" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("sondages")}
-          >
-            📊 Sondages
-          </button>
-          <button
-            className={`db-nav-btn${section === "annonces" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("annonces")}
+            className="db-nav-btn db-nav-btn--disabled"
+            disabled
+            title="Fonctionnalité en cours de configuration"
           >
             📢 Annonces
           </button>
@@ -397,6 +410,13 @@ export default function AssociationDashboard() {
             onClick={() => setSection("stats")}
           >
             📈 Statistiques
+          </button>
+          <div className="db-nav-sep" />
+          <button
+            className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
+            onClick={() => setSection("parametres")}
+          >
+            ⚙ Paramètres
           </button>
         </div>
         <button
@@ -420,22 +440,29 @@ export default function AssociationDashboard() {
         </div>
       )}
 
-      {section === "articles"    && <ArticlesManager onEdit={handleEditArticle} />}
-      {section === "candidatures" && <RPDashboard />}
-      {section === "affiche"      && <AfficheSection />}
-      {section === "profils"      && <ProfilesSection />}
-      {section === "membres"      && <MembresSection />}
-      {section === "formulaires"  && <FormulairesManager />}
-      {section === "tickets"      && <TicketsManager />}
-      {section === "parametres"   && <ParametresSection />}
-      {section === "categories"   && <CategoriesSection />}
-      {section === "roles"        && <RolesSection />}
-      {section === "mediatheque"  && <MediathequeSection />}
-      {section === "sondages"     && <PollsSection />}
-      {section === "annonces"     && <PopupsSection />}
-      {section === "stats"        && <StatsSection />}
+      {/* ── Studio sub-sections ── */}
+      {section === "studio" && studioView === "hub"                                    && <StudioHub setView={setStudioView} drafts={drafts} />}
+      {section === "studio" && (studioView === "articles" || studioView === "brouillons") && <ArticlesManager onEdit={handleEditArticle} />}
+      {section === "studio" && studioView === "candidatures"                            && <RPDashboard />}
+      {section === "studio" && studioView === "affiche"                                 && <AfficheSection />}
+      {section === "studio" && studioView === "formulaires"                             && <FormulairesManager />}
+      {section === "studio" && studioView === "sondages"                                && <PollsSection />}
+      {section === "studio" && studioView === "categories"                              && <CategoriesSection />}
 
-      <div className="db-body" style={{ display: section === "studio" ? undefined : "none" }}>
+      {/* ── Profils & Accès sub-sections ── */}
+      {section === "profils" && profilsView === "hub"     && <ProfilsHub setView={setProfilsView} />}
+      {section === "profils" && profilsView === "profils" && <ProfilesSection />}
+      {section === "profils" && profilsView === "membres" && <MembresSection />}
+      {section === "profils" && profilsView === "roles"   && <RolesSection />}
+
+      {/* ── Sections directes ── */}
+      {section === "tickets"     && <TicketsManager />}
+      {section === "mediatheque" && <MediathequeSection />}
+      {section === "annonces"    && <PopupsSection />}
+      {section === "stats"       && <StatsSection />}
+      {section === "parametres"  && <ParametresSection />}
+
+      <div className="db-body" style={{ display: section === "studio" && studioView === "editeur" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
         <aside className="db-sidebar">
           <p className="db-sidebar-label">Sélectionner une catégorie</p>

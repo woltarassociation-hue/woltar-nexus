@@ -13,7 +13,7 @@ export async function getActiveAnnouncement() {
         .or(`expires_at.is.null,expires_at.gte.${now}`)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
     );
     if (error) return null;
     return data;
