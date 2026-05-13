@@ -1,10 +1,28 @@
 import { createClient } from "@supabase/supabase-js";
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const url = import.meta.env.VITE_SUPABASE_URL?.trim();
+const key = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
 export const isConfigured = Boolean(url && key);
-export const supabase = isConfigured ? createClient(url, key) : null;
+
+if (!isConfigured) {
+  console.warn(
+    "[Woltar Nexus] Supabase non configuré.\n" +
+    "→ Remplissez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local\n" +
+    "→ Supabase Dashboard : Settings → API\n" +
+    "→ Relancez le serveur Vite après modification."
+  );
+}
+
+export const supabase = isConfigured
+  ? createClient(url, key, {
+      auth: {
+        persistSession:   true,
+        autoRefreshToken: true,
+        storageKey:       "woltar_auth",
+      },
+    })
+  : null;
 
 export function withTimeout(promise, ms = 8000) {
   return Promise.race([

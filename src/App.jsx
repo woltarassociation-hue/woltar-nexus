@@ -20,6 +20,7 @@ import { getSubcategories } from "./lib/subcategories.js";
 import { seedDefaultProfiles } from "./lib/profiles.js";
 import { getAffiche, loadAffiche } from "./lib/affiche.js";
 import { getSettings, settingsReady } from "./lib/settings.js";
+import { isConfigured as supabaseConfigured } from "./lib/db.js";
 
 seedDefaultProfiles();
 import "./style.css";
@@ -108,6 +109,7 @@ export default function App() {
     <>
       <AnnouncementPopup />
       <LocalStorageBanner />
+      {!supabaseConfigured && import.meta.env.DEV && <SupabaseMissingBanner />}
       <Routes>
         <Route path="/" element={<MainSite />} />
         <Route path="/login" element={<LoginPage />} />
@@ -129,6 +131,32 @@ export default function App() {
         <Route path="/:category" element={<CategoryPage />} />
       </Routes>
     </>
+  );
+}
+
+/* ── Bannière dev : Supabase non configuré ────────────────── */
+
+function SupabaseMissingBanner() {
+  return (
+    <div style={{
+      position: "fixed", top: 0, left: 0, right: 0, zIndex: 99999,
+      background: "#7c1a1a", color: "#fff", fontSize: 13,
+      padding: "10px 20px", display: "flex", alignItems: "center", gap: 12,
+      fontFamily: "monospace", borderBottom: "2px solid #ff4444",
+    }}>
+      <span style={{ fontWeight: 700, color: "#ff9999" }}>⚠ DEV</span>
+      <span>
+        Supabase non configuré — remplissez{" "}
+        <code style={{ background: "rgba(0,0,0,0.3)", padding: "1px 6px", borderRadius: 4 }}>
+          VITE_SUPABASE_URL
+        </code>{" "}
+        et{" "}
+        <code style={{ background: "rgba(0,0,0,0.3)", padding: "1px 6px", borderRadius: 4 }}>
+          VITE_SUPABASE_ANON_KEY
+        </code>{" "}
+        dans <strong>.env.local</strong>, puis relancez Vite.
+      </span>
+    </div>
   );
 }
 
