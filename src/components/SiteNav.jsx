@@ -36,12 +36,38 @@ function NavLink({ link, active, onClick }) {
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const close = () => setOpen(false);
+
+  // 4e lien droit dynamique — garde le même nombre de boutons des deux côtés
+  function AuthLink({ onClick }) {
+    if (isAdmin) {
+      return (
+        <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={onClick}>
+          <span className="nav-symbol">⚙</span>
+          <span>Admin</span>
+        </Link>
+      );
+    }
+    if (user) {
+      return (
+        <Link to="/compte" className="nav-link" onClick={onClick}>
+          <span className="nav-symbol">👤</span>
+          <span>Profil</span>
+        </Link>
+      );
+    }
+    return (
+      <Link to="/login" className="nav-link nav-link--login" onClick={onClick}>
+        <span className="nav-symbol">🔑</span>
+        <span>Connexion</span>
+      </Link>
+    );
+  }
 
   return (
     <header className="navbar">
-      {/* Left — 3 liens */}
+      {/* Gauche — 4 liens */}
       <nav className="nav-left">
         {LEFT_LINKS.map((link) => (
           <NavLink
@@ -68,7 +94,7 @@ export default function SiteNav() {
         </a>
       </div>
 
-      {/* Right — 4 liens + accès admin (si connecté) + compte membre */}
+      {/* Droite — 4 liens (3 fixes + 1 auth) */}
       <nav className="nav-right">
         {RIGHT_LINKS.map((link) => (
           <NavLink
@@ -78,15 +104,10 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
-        {isAdmin && (
-          <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
-            <span className="nav-symbol">⚙</span>
-            <span>Admin</span>
-          </Link>
-        )}
+        <AuthLink onClick={close} />
       </nav>
 
-      {/* Hamburger — mobile only */}
+      {/* Hamburger — mobile uniquement */}
       <button
         className={`nav-hamburger${open ? " is-open" : ""}`}
         onClick={() => setOpen((v) => !v)}
@@ -96,7 +117,7 @@ export default function SiteNav() {
         <span /><span /><span />
       </button>
 
-      {/* Mobile dropdown */}
+      {/* Menu mobile déroulant */}
       {open && (
         <div className="nav-mobile">
           {[...LEFT_LINKS, ...RIGHT_LINKS].map((link) => (
@@ -107,12 +128,7 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
-          {isAdmin && (
-            <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
-              <span className="nav-symbol">⚙</span>
-              <span>Admin</span>
-            </Link>
-          )}
+          <AuthLink onClick={close} />
         </div>
       )}
     </header>
