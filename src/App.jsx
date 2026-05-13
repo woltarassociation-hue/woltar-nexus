@@ -45,31 +45,27 @@ const PORTAL_CATEGORIES = [
     label: "Actualités",
     desc: "Mises à jour, prévention et règles communautaires.",
     accent: "#1fa8dc",
-    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
   },
   {
     href: "/evenements",
     icon: "🎪",
     label: "Événements",
     desc: "Animations RP, concours et festivités Woltar.",
-    accent: "#1fa8dc",
-    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
+    accent: "#e8912a",
   },
   {
     href: "/fanarts",
     icon: "🎨",
     label: "Fan-arts",
     desc: "Créations artistiques de la communauté.",
-    accent: "#1fa8dc",
-    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
+    accent: "#a865d8",
   },
   {
     href: "/rp",
     icon: "🎭",
     label: "RP",
     desc: "Récits, intrigues et aventures de l'univers.",
-    accent: "#1fa8dc",
-    bg: "linear-gradient(135deg, #001a28 0%, #000e18 100%)",
+    accent: "#8b0000",
   },
 ];
 
@@ -536,15 +532,11 @@ function CategoriesPortal() {
               key={cat.href}
               href={cat.href}
               className="portal-card"
-              style={{ background: cat.bg }}
+              style={{ "--card-accent": cat.accent }}
             >
-              <div
-                className="portal-card-glow"
-                style={{ background: `radial-gradient(circle at 30% 40%, ${cat.accent}44 0%, transparent 65%)` }}
-              />
               <span className="portal-card-icon">{cat.icon}</span>
               <div className="portal-card-body">
-                <span className="portal-card-label" style={{ color: cat.accent }}>{cat.label}</span>
+                <span className="portal-card-label">{cat.label}</span>
                 <p className="portal-card-desc">{cat.desc}</p>
               </div>
               <span className="portal-card-arrow">→</span>
