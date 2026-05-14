@@ -4,10 +4,10 @@ import { useAuth } from "../hooks/useAuth.jsx";
 /**
  * Protège une route côté client.
  * - Non connecté → redirige vers /login (avec la page d'origine mémorisée)
- * - Connecté sans le rôle requis → redirige vers /
+ * - Connecté sans le profil d'accès requis → redirige vers /
  *
- * requireAdmin : exige un rôle administrateur complet
- * requirePermission : exige une permission communautaire
+ * requireAdmin : exige un profil d'accès administrateur complet
+ * requirePermission : exige une permission calculée en code
  */
 export default function ProtectedRoute({ children, requireAdmin = false, requirePermission = null }) {
   const { user, loading, hasPermission, isAdmin } = useAuth();

@@ -1,6 +1,7 @@
 import { supabase, withTimeout } from "./db.js";
 import { getProfiles } from "./profiles.js";
 import { DEFAULT_ROLE, hasRolePermission, isAdminRole, normalizeRole } from "./profileLevels.js";
+import { createActivity, touchPresence } from "./social.js";
 
 // ── Session locale (table members) ────────────────────────────────────────────
 
@@ -96,6 +97,12 @@ export async function signInFromMembers(username, password) {
 
   setMemberSession(session);
   window.dispatchEvent(new Event("woltar:auth"));
+  await touchPresence(session.id);
+  await createActivity({
+    profileId: session.id,
+    type: "login",
+    message: "Connexion au compte",
+  });
 
   console.log("[Auth] Connexion réussie:", session.pseudo, "— rôle:", session.role);
   return { user: session, error: null };
@@ -104,6 +111,15 @@ export async function signInFromMembers(username, password) {
 // ── Déconnexion ────────────────────────────────────────────────────────────────
 
 export async function signOut() {
+  const existing = getMemberSession();
+  if (existing?.id) {
+    await touchPresence(existing.id);
+    await createActivity({
+      profileId: existing.id,
+      type: "logout",
+      message: "Déconnexion du compte",
+    });
+  }
   clearMemberSession();
   window.dispatchEvent(new Event("woltar:auth"));
   if (supabase) await supabase.auth.signOut();
@@ -155,6 +171,18 @@ export async function registerWithUsername(username, password) {
       ? "Inscription temporairement bloquée par Supabase Auth. Désactivez la confirmation email dans Supabase Auth pour les emails techniques."
       : error.message;
     return { user: null, error: message };
+  }
+  const authUser = data?.user;
+  if (authUser?.id) {
+    const profile = await getUserProfile(authUser.id);
+    if (profile?.id) {
+      await createActivity({
+        profileId: profile.id,
+        type: "signup",
+        message: "Inscription sur Woltar Nexus",
+      });
+      await touchPresence(profile.id);
+    }
   }
   return { user: data.user, error: null };
 }

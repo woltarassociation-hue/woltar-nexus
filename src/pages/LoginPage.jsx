@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import { signInFromMembers } from "../lib/auth.js";
-import { isAdminRole } from "../lib/profileLevels.js";
+import { canAccessDashboard, isAdminRole } from "../lib/profileLevels.js";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -23,7 +23,9 @@ export default function LoginPage() {
     if (err) { setError(err); return; }
     const dest = isAdminRole(user?.role)
       ? "/association/dashboard"
-      : redirectTo;
+      : canAccessDashboard(user?.role)
+        ? redirectTo
+        : "/compte";
     navigate(dest, { replace: true });
   };
 

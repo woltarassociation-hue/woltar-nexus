@@ -1,5 +1,6 @@
 import { supabase, withTimeout, fromDb } from "./db.js";
 import { DEFAULT_ROLE, ROLE_LABELS, normalizeRole } from "./profileLevels.js";
+import { createActivity, createNotification } from "./social.js";
 
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";
@@ -7,6 +8,12 @@ const SESSION_KEY = "woltar_session";
 let _cache = null;
 
 export { ROLE_LABELS };
+
+export function isProtectedAccessProfile(profile) {
+  if (!profile) return false;
+  const username = String(profile.username || "").trim().toLowerCase();
+  return profile.locked === true || username === "association";
+}
 
 const DEFAULT_PROFILES = [
   { id: "default-admin",  name: "Administrateur", role: "administrateur", username: "association" },
@@ -29,6 +36,7 @@ function sanitizeProfile(profile) {
     }
   }
   safe.role = normalizeRole(safe.role || DEFAULT_ROLE);
+  safe.locked = isProtectedAccessProfile(safe);
   safe.name = safe.name || safe.displayName || safe.display_name || safe.username || "";
   return safe;
 }
@@ -50,6 +58,7 @@ function toRemoteProfile(profile) {
     woltarien1: safe.woltarien1 || "",
     woltarien2: safe.woltarien2 || null,
     links: safe.links || {},
+    last_seen_at: safe.lastSeenAt || safe.last_seen_at || null,
     updated_at: safe.updatedAt || new Date().toISOString(),
   };
 }
@@ -80,13 +89,13 @@ async function loadFromSupabase() {
       supabase.from("profiles").select("*").order("created_at", { ascending: true })
     );
     if (error) throw error;
-    if (data && data.length > 0) {
-      _cache = sanitizeProfiles(data.map(fromDb));
-      localStorage.setItem(KEY, JSON.stringify(_cache));
-      dispatch();
-    }
+    _cache = sanitizeProfiles((data || []).map(fromDb));
+    localStorage.setItem(KEY, JSON.stringify(_cache));
+    dispatch();
+    return { ok: true, profiles: _cache };
   } catch (err) {
     console.warn("[profiles] Supabase load failed:", err.message);
+    return { ok: false, error: err.message };
   }
 }
 
@@ -97,6 +106,13 @@ if (supabase) {
     .channel("profiles-changes")
     .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, loadFromSupabase)
     .subscribe();
+}
+
+export async function reloadProfilesCache() {
+  if (!supabase) {
+    return { ok: false, error: "Supabase non configuré" };
+  }
+  return loadFromSupabase();
 }
 
 /* isConfigured : retourne true si au moins un compte non-default existe */
@@ -149,11 +165,29 @@ export async function seedDefaultProfiles() {
   }
 }
 
-export async function saveProfile(data) {
+export async function saveProfile(data, options = {}) {
   const all = getProfiles();
   const id = data.id || crypto.randomUUID();
   const now = new Date().toISOString();
-  const record = sanitizeProfile({ ...data, id, createdAt: data.createdAt || now, updatedAt: now });
+  const existing = all.find((p) => p.id === id) || null;
+  let record = sanitizeProfile({ ...data, id, createdAt: data.createdAt || now, updatedAt: now });
+
+  if (isProtectedAccessProfile(existing)) {
+    record = sanitizeProfile({
+      ...record,
+      username: existing.username,
+      role: existing.role,
+      _rawRole: existing._rawRole ?? existing.role,
+      locked: true,
+    });
+  } else if (String(record.username || "").trim().toLowerCase() === "association") {
+    record = sanitizeProfile({
+      ...record,
+      role: "administrateur",
+      locked: true,
+    });
+  }
+
   const idx = all.findIndex((p) => p.id === id);
   if (idx >= 0) all[idx] = record; else all.push(record);
   _cache = [...all];
@@ -163,6 +197,35 @@ export async function saveProfile(data) {
   if (!supabase) return record;
   try {
     await withTimeout(supabase.from("profiles").upsert([toRemoteProfile(record)]));
+    const roleChanged = !!existing && normalizeRole(existing.role) !== normalizeRole(record.role);
+    if (roleChanged) {
+      await createActivity({
+        profileId: record.id,
+        type: "profile_access_updated",
+        message: `Profil d'accès modifié vers ${record.role}`,
+        metadata: { from: existing.role, to: record.role, actor_id: options.actorId || null },
+      });
+      await createNotification({
+        profileId: record.id,
+        type: "profile_access_updated",
+        title: "Profil d'accès mis à jour",
+        body: `Votre profil d'accès est maintenant "${record.role}".`,
+      });
+    } else if (!existing) {
+      await createActivity({
+        profileId: record.id,
+        type: "profile_created",
+        message: "Profil créé",
+        metadata: { actor_id: options.actorId || null },
+      });
+    } else {
+      await createActivity({
+        profileId: record.id,
+        type: "profile_updated",
+        message: "Profil mis à jour",
+        metadata: { actor_id: options.actorId || null },
+      });
+    }
   } catch (err) {
     console.error("[saveProfile] Supabase failed:", err.message);
   }
@@ -170,6 +233,10 @@ export async function saveProfile(data) {
 }
 
 export async function deleteProfile(id) {
+  const target = getProfiles().find((p) => p.id === id);
+  if (isProtectedAccessProfile(target)) {
+    return { ok: false, error: "Le profil association est verrouille et ne peut pas etre supprime." };
+  }
   const all = getProfiles().filter((p) => p.id !== id);
   _cache = all;
   localStorage.setItem(KEY, JSON.stringify(all));
@@ -180,6 +247,7 @@ export async function deleteProfile(id) {
   } catch (err) {
     console.error("[deleteProfile] Supabase failed:", err.message);
   }
+  return { ok: true };
 }
 
 export function authenticate() {

@@ -1,20 +1,23 @@
 import { supabase, withTimeout, toDb, fromDb } from "./db.js";
+import { createNotification } from "./social.js";
 
 const LS_KEY = "woltar_articles";
 let _cache = null;
-
-// Promise qui se résout une fois le premier chargement Supabase terminé
-// (succès ou échec). Utilisée par ArticlePage pour ne pas rediriger
-// avant d'avoir la réponse Supabase.
 let _initResolve;
-export const articlesReady = new Promise((res) => { _initResolve = res; });
+export const articlesReady = new Promise((res) => {
+  _initResolve = res;
+});
 
 function dispatch() {
   window.dispatchEvent(new Event("woltar:articles"));
 }
 
 function readLocal() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || "[]"); } catch { return []; }
+  try {
+    return JSON.parse(localStorage.getItem(LS_KEY) || "[]");
+  } catch {
+    return [];
+  }
 }
 
 export function generateSlug(title) {
@@ -37,12 +40,12 @@ export function getAllArticles() {
 
 async function loadFromSupabase() {
   if (!supabase) {
-    _initResolve(); // Pas de Supabase → résoudre immédiatement
+    _initResolve();
     return;
   }
   try {
     const { data, error } = await withTimeout(
-      supabase.from("articles").select("*").order("created_at", { ascending: false })
+      supabase.from("articles").select("*").order("updated_at", { ascending: false })
     );
     if (error) throw error;
     _cache = (data || []).map(fromDb);
@@ -51,11 +54,10 @@ async function loadFromSupabase() {
   } catch (err) {
     console.warn("[articles] Supabase load failed:", err.message);
   } finally {
-    _initResolve(); // Résoudre dans tous les cas (succès ou échec)
+    _initResolve();
   }
 }
 
-// Auto-init + realtime
 if (supabase) {
   loadFromSupabase();
   supabase
@@ -63,40 +65,122 @@ if (supabase) {
     .on("postgres_changes", { event: "*", schema: "public", table: "articles" }, loadFromSupabase)
     .subscribe();
 } else {
-  // Pas de Supabase configuré — résoudre la promesse immédiatement
   _initResolve();
 }
 
-export async function upsertArticle(data) {
-  const id = data.id || crypto.randomUUID();
+function applyWorkflowFields(prev, next, actorProfileId) {
+  const out = { ...next };
+  const prevStatus = prev?.status || null;
+  const status = out.status || "draft";
+  const changed = prevStatus !== status;
   const now = new Date().toISOString();
-  const slug = data.slug || generateSlug(data.title);
-  const record = { ...data, id, slug, updatedAt: now, createdAt: data.createdAt || now };
+  if (!changed) return out;
 
-  // Mise à jour immédiate du cache et du localStorage
+  if (status === "submitted") out.submittedAt = out.submittedAt || now;
+  if (status === "validated") {
+    out.validatedAt = now;
+    out.validatedBy = actorProfileId || out.validatedBy || null;
+  }
+  if (status === "refused") {
+    out.refusedAt = now;
+    out.refusedBy = actorProfileId || out.refusedBy || null;
+  }
+  if (status === "published") {
+    out.publishedAt = now;
+    out.publishedBy = actorProfileId || out.publishedBy || null;
+  }
+  return out;
+}
+
+async function insertWorkflowLog({ articleId, actorProfileId, action, fromStatus, toStatus, note }) {
+  if (!supabase || !articleId || !action) return;
+  try {
+    await withTimeout(
+      supabase.from("article_workflow_logs").insert({
+        article_id: articleId,
+        actor_profile_id: actorProfileId || null,
+        action,
+        from_status: fromStatus || null,
+        to_status: toStatus || null,
+        note: note || null,
+      })
+    );
+  } catch {
+    // non bloquant
+  }
+}
+
+export async function upsertArticle(data, options = {}) {
+  const id = data.id || crypto.randomUUID();
   const all = getAllArticles();
+  const prev = all.find((a) => a.id === id) || null;
+  const now = new Date().toISOString();
+  const slug = data.slug || prev?.slug || generateSlug(data.title);
+
+  const base = {
+    ...prev,
+    ...data,
+    id,
+    slug,
+    updatedAt: now,
+    createdAt: prev?.createdAt || data.createdAt || now,
+    authorProfileId: data.authorProfileId || prev?.authorProfileId || options.actorProfileId || null,
+  };
+  const record = applyWorkflowFields(prev, base, options.actorProfileId || null);
+
   const idx = all.findIndex((a) => a.id === id);
-  if (idx >= 0) all[idx] = record; else all.unshift(record);
+  if (idx >= 0) all[idx] = record;
+  else all.unshift(record);
   _cache = all;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {
-    // localStorage may be full or unavailable.
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(all));
+  } catch {
+    // ignore
   }
   dispatch();
 
   if (!supabase) {
-    return {
-      record,
-      syncOk: false,
-      syncError: "Supabase non configuré — variables VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY manquantes dans Vercel",
-    };
+    return { record, syncOk: false, syncError: "Supabase non configuré" };
   }
 
   try {
     const { data: saved, error } = await withTimeout(
-      supabase.from("articles").upsert([toDb(record)]).select()
+      supabase.from("articles").upsert([toDb(record)]).select().single()
     );
     if (error) throw error;
-    return { record: saved[0] ? fromDb(saved[0]) : record, syncOk: true, syncError: null };
+    const savedRow = saved ? fromDb(saved) : record;
+
+    const fromStatus = prev?.status || null;
+    const toStatus = savedRow.status || null;
+    if (fromStatus !== toStatus) {
+      await insertWorkflowLog({
+        articleId: savedRow.id,
+        actorProfileId: options.actorProfileId || null,
+        action: options.workflowAction || "status_change",
+        fromStatus,
+        toStatus,
+        note: options.validationNote || null,
+      });
+
+      if (savedRow.authorProfileId && options.actorProfileId && savedRow.authorProfileId !== options.actorProfileId) {
+        const notifByStatus = {
+          validated: { title: "Contenu validé", body: `Votre contenu "${savedRow.title}" a été validé.` },
+          refused: { title: "Contenu refusé", body: `Votre contenu "${savedRow.title}" a été refusé.` },
+          published: { title: "Contenu publié", body: `Votre contenu "${savedRow.title}" est publié.` },
+        };
+        const notif = notifByStatus[toStatus];
+        if (notif) {
+          await createNotification({
+            profileId: savedRow.authorProfileId,
+            type: `content_${toStatus}`,
+            title: notif.title,
+            body: notif.body,
+          });
+        }
+      }
+    }
+
+    return { record: savedRow, syncOk: true, syncError: null };
   } catch (err) {
     console.error("[upsertArticle] Supabase failed:", err.message);
     return { record, syncOk: false, syncError: err.message };
@@ -128,10 +212,7 @@ export async function toggleFeatured(id) {
   if (!supabase) return;
   try {
     await withTimeout(
-      supabase
-        .from("articles")
-        .update(toDb({ featured: updated.featured, updatedAt: updated.updatedAt }))
-        .eq("id", id)
+      supabase.from("articles").update(toDb({ featured: updated.featured, updatedAt: updated.updatedAt })).eq("id", id)
     );
   } catch (err) {
     console.error("[toggleFeatured] Supabase failed:", err.message);

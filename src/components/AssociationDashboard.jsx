@@ -5,9 +5,8 @@ import { saveArticle, uploadCoverImage, supabaseConfigured } from "../lib/supaba
 import { getAffiche, saveAffiche, clearAffiche } from "../lib/affiche";
 import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
 import { getAllCandidatures, updateCandidatureStatus, deleteCandidature, exportCandidaturesCSV } from "../lib/candidatures";
-import { getProfiles, saveProfile, deleteProfile, clearSession, ROLE_LABELS } from "../lib/profiles";
+import { getProfiles, saveProfile, deleteProfile, clearSession, ROLE_LABELS, isProtectedAccessProfile, reloadProfilesCache } from "../lib/profiles";
 import { signOut as memberSignOut } from "../lib/auth.js";
-import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
 import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv } from "../lib/forms";
@@ -15,12 +14,12 @@ import { getTickets, deleteTicket, updateTicketStatus, getDiscordConfig, saveDis
 import RichTextEditor from "./RichTextEditor";
 import ParametresSection  from "./admin/ParametresSection";
 import CategoriesSection  from "./admin/CategoriesSection";
-import BadgesSection      from "./admin/BadgesSection";
+import ProfilsAccessPanel from "./admin/ProfilsAccessPanel";
 import MediathequeSection from "./admin/MediathequeSection";
 import PollsSection       from "./admin/PollsSection";
 import PopupsSection      from "./admin/PopupsSection";
 import StatsSection       from "./admin/StatsSection";
-import { ROLE_COLORS, getAllowedArticleCategories } from "../lib/profileLevels.js";
+import { DEFAULT_LEVEL, PROFILE_LEVELS, normalizeRole, ROLE_COLORS, canAccessSection, getAllowedArticleCategories } from "../lib/profileLevels.js";
 
 const stripHtml = (html) =>
   (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -126,6 +125,7 @@ const EMPTY_FORM = {
   id: null,
   title: "",
   author: "",
+  authorProfileId: null,
   tags: "",
   category: "actualites",
   subcategory: "",
@@ -136,6 +136,10 @@ const EMPTY_FORM = {
   coverUrl: null,
   coverMode: "banner",
   status: "draft",
+  submittedAt: null,
+  validatedAt: null,
+  refusedAt: null,
+  publishedAt: null,
   scheduledAt: "",
   font: "Playfair Display",
   titleFont: "Playfair Display",
@@ -187,6 +191,7 @@ function StudioHub({ setView, drafts, allowedCategories, canAdmin }) {
 
 /* ── Profils Hub ─────────────────────────────────────────── */
 
+// eslint-disable-next-line no-unused-vars
 function ProfilsHub({ setView }) {
   const CARDS = [
     { icon: "👥", label: "Profils & Accès",     sub: "Comptes du tableau de bord", view: "profils" },
@@ -218,9 +223,8 @@ function ProfilsHub({ setView }) {
 export default function AssociationDashboard() {
   const navigate = useNavigate();
   const { profile, hasPermission } = useAuth();
-  const [section, setSection]         = useState("studio");
-  const [studioView, setStudioView]   = useState("hub");
-  const [profilsView, setProfilsView] = useState("hub");
+  const [section, setSection]       = useState("studio");
+  const [studioView, setStudioView] = useState("hub");
   const [form, setForm] = useState(EMPTY_FORM);
   const [editorTab, setEditorTab] = useState("content");
   const [saving, setSaving] = useState(false);
@@ -233,10 +237,24 @@ export default function AssociationDashboard() {
 
   const allowedCategories = useMemo(() => getAllowedArticleCategories(profile?.role), [profile?.role]);
   const studioEnabled     = hasPermission("access_studio");
-  const canManageMedia    = hasPermission("manage_media");    // communication, administrateur, dev
   const canManageUsers    = hasPermission("manage_users");    // administrateur, dev uniquement
-  const canManageSettings = hasPermission("manage_settings"); // administrateur, dev uniquement
+  const canOpenMedia      = canAccessSection(profile?.role, "mediatheque");
+  const canOpenProfiles   = canAccessSection(profile?.role, "profils");
+  const canOpenTickets    = canAccessSection(profile?.role, "tickets");
+  const canOpenStats      = canAccessSection(profile?.role, "stats");
+  const canOpenSettings   = canAccessSection(profile?.role, "parametres");
+  const canValidateStudio = hasPermission("manage_content") || hasPermission("publish_actualites") || hasPermission("publish_fanarts");
   const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  const canPublishCategory = (category) => {
+    if (["actualites", "prevention", "regles", "evenements", "rp"].includes(category)) {
+      return hasPermission("publish_actualites") || hasPermission("manage_content");
+    }
+    if (category === "fanarts") {
+      return hasPermission("publish_fanarts") || hasPermission("manage_content");
+    }
+    return hasPermission("manage_content");
+  };
 
   useEffect(() => {
     const refresh = () =>
@@ -289,9 +307,9 @@ export default function AssociationDashboard() {
     }));
   };
 
-  const handleSave = async (status) => {
+  const handleSave = async (status, workflowAction = null) => {
     if (allowedCategories && !allowedCategories.includes(form.category)) {
-      setFeedback({ type: "error", message: "Votre rôle ne permet pas de publier dans cette catégorie." });
+      setFeedback({ type: "error", message: "Votre profil d'accès ne permet pas de publier dans cette catégorie." });
       return;
     }
     setSaving(true);
@@ -304,7 +322,8 @@ export default function AssociationDashboard() {
       const { record, syncOk, syncError } = await saveArticle({
         id: form.id || undefined,
         title: form.title,
-        author: form.author,
+        author: form.author || profile?.username || "",
+        authorProfileId: form.authorProfileId || profile?.id || null,
         tags: form.tags,
         category: form.category,
         subcategory: form.subcategory || "",
@@ -321,6 +340,9 @@ export default function AssociationDashboard() {
         textColor: form.textColor,
         accentColor: form.accentColor,
         bgColor: form.bgColor,
+      }, {
+        actorProfileId: profile?.id || null,
+        workflowAction: workflowAction || (status === "submitted" ? "submit" : status === "published" ? "publish" : "save"),
       });
 
       if (status === "published") {
@@ -342,7 +364,7 @@ export default function AssociationDashboard() {
             ? "✓ Brouillon enregistré en ligne."
             : `✗ Brouillon non enregistré en ligne. ${syncError || "Erreur Supabase inconnue."}`,
         });
-        setForm((f) => ({ ...f, id: record.id, coverUrl, coverFile: null }));
+        setForm((f) => ({ ...f, ...record, id: record.id, coverUrl, coverFile: null }));
       }
     } catch (err) {
       setFeedback({ type: "error", message: err.message });
@@ -389,15 +411,15 @@ export default function AssociationDashboard() {
               ✏ Studio
             </button>
           )}
-          {canManageUsers && (
+          {canOpenProfiles && (
             <button
               className={`db-nav-btn${section === "profils" ? " db-nav-btn--active" : ""}`}
-              onClick={() => { setSection("profils"); setProfilsView("hub"); }}
+              onClick={() => setSection("profils")}
             >
               👥 Profils & Accès
             </button>
           )}
-          {canManageUsers && (
+          {canOpenTickets && (
             <button
               className={`db-nav-btn${section === "tickets" ? " db-nav-btn--active" : ""}`}
               onClick={() => setSection("tickets")}
@@ -405,7 +427,7 @@ export default function AssociationDashboard() {
               🎫 Tickets
             </button>
           )}
-          {canManageMedia && (
+          {canOpenMedia && (
             <button
               className={`db-nav-btn${section === "mediatheque" ? " db-nav-btn--active" : ""}`}
               onClick={() => setSection("mediatheque")}
@@ -420,7 +442,7 @@ export default function AssociationDashboard() {
           >
             📢 Annonces
           </button>
-          {canManageUsers && (
+          {canOpenStats && (
             <button
               className={`db-nav-btn${section === "stats" ? " db-nav-btn--active" : ""}`}
               onClick={() => setSection("stats")}
@@ -428,8 +450,8 @@ export default function AssociationDashboard() {
               📈 Statistiques
             </button>
           )}
-          {canManageSettings && <div className="db-nav-sep" />}
-          {canManageSettings && (
+          {canOpenSettings && <div className="db-nav-sep" />}
+          {canOpenSettings && (
             <button
               className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
               onClick={() => setSection("parametres")}
@@ -461,25 +483,24 @@ export default function AssociationDashboard() {
 
       {/* ── Studio sub-sections ── */}
       {section === "studio" && studioView === "hub"                                    && <StudioHub setView={setStudioView} drafts={drafts} allowedCategories={allowedCategories} canAdmin={canManageUsers} />}
-      {section === "studio" && (studioView === "articles" || studioView === "brouillons") && <ArticlesManager onEdit={handleEditArticle} />}
+      {section === "studio" && (studioView === "articles" || studioView === "brouillons") && (
+        <ArticlesManager onEdit={handleEditArticle} profile={profile} canValidateStudio={canValidateStudio} />
+      )}
       {section === "studio" && studioView === "candidatures" && canManageUsers          && <RPDashboard />}
       {section === "studio" && studioView === "affiche" && canManageUsers               && <AfficheSection />}
       {section === "studio" && studioView === "formulaires" && canManageUsers           && <FormulairesManager />}
       {section === "studio" && studioView === "sondages" && canManageUsers              && <PollsSection />}
       {section === "studio" && studioView === "categories" && canManageUsers            && <CategoriesSection />}
 
-      {/* ── Profils & Accès sub-sections ── */}
-      {section === "profils" && profilsView === "hub" && canManageUsers     && <ProfilsHub setView={setProfilsView} />}
-      {section === "profils" && profilsView === "profils" && canManageUsers && <ProfilesSection />}
-      {section === "profils" && profilsView === "membres" && canManageUsers && <MembresSection />}
-      {section === "profils" && profilsView === "badges" && canManageUsers  && <BadgesSection />}
+      {/* ── Profils & Accès ── */}
+      {section === "profils" && canOpenProfiles && <ProfilsAccessPanel />}
 
       {/* ── Sections directes ── */}
-      {section === "tickets" && canManageUsers     && <TicketsManager />}
-      {section === "mediatheque" && canManageMedia && <MediathequeSection />}
+      {section === "tickets" && canOpenTickets     && <TicketsManager />}
+      {section === "mediatheque" && canOpenMedia && <MediathequeSection />}
       {section === "annonces" && canManageUsers    && <PopupsSection />}
-      {section === "stats" && canManageUsers       && <StatsSection />}
-      {section === "parametres" && canManageSettings && <ParametresSection />}
+      {section === "stats" && canOpenStats       && <StatsSection />}
+      {section === "parametres" && canOpenSettings && <ParametresSection />}
 
       <div className="db-body" style={{ display: section === "studio" && studioView === "editeur" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
@@ -538,6 +559,14 @@ export default function AssociationDashboard() {
                 ? `Modifier${form.title ? ` — ${form.title}` : " le brouillon"}`
                 : "Créer un article"}
             </h2>
+            {form.id && (
+              <p className="db-editor-meta" style={{ marginTop: 6, color: "#9aa6bd", fontSize: "0.85rem" }}>
+                Auteur: {form.author || "—"} · Statut: {form.status || "draft"}
+                {form.submittedAt ? ` · Soumis le ${new Date(form.submittedAt).toLocaleString("fr-FR")}` : ""}
+                {form.validatedAt ? ` · Validé le ${new Date(form.validatedAt).toLocaleString("fr-FR")}` : ""}
+                {form.publishedAt ? ` · Publié le ${new Date(form.publishedAt).toLocaleString("fr-FR")}` : ""}
+              </p>
+            )}
 
             {feedback && (
               <div className={`db-feedback db-feedback--${feedback.type}`}>
@@ -740,10 +769,15 @@ export default function AssociationDashboard() {
               </button>
               <button
                 className="db-btn db-btn--publish"
-                onClick={() => handleSave("published")}
+                onClick={() =>
+                  handleSave(
+                    canPublishCategory(form.category) ? "published" : "submitted",
+                    canPublishCategory(form.category) ? "publish" : "submit"
+                  )
+                }
                 disabled={!canSave}
               >
-                {saving ? "Publication…" : "Publier →"}
+                {saving ? "Publication…" : canPublishCategory(form.category) ? "Publier →" : "Soumettre à validation →"}
               </button>
               <button
                 className="db-btn db-btn--schedule"
@@ -753,6 +787,24 @@ export default function AssociationDashboard() {
               >
                 📅 Programmer
               </button>
+              {canValidateStudio && form.id && form.status === "submitted" && (
+                <>
+                  <button
+                    className="db-btn db-btn--publish"
+                    onClick={() => handleSave("validated", "validate")}
+                    disabled={!canSave}
+                  >
+                    Valider
+                  </button>
+                  <button
+                    className="db-btn db-btn--cancel"
+                    onClick={() => handleSave("refused", "refuse")}
+                    disabled={!canSave}
+                  >
+                    Refuser
+                  </button>
+                </>
+              )}
               <button className="db-btn db-btn--cancel" onClick={handleCancel}>
                 Annuler
               </button>
@@ -871,10 +923,13 @@ const CAT_LIST = [
   { id: "rp",          label: "RP",          icon: "🎭" },
 ];
 
-function ArticlesManager({ onEdit }) {
+function ArticlesManager({ onEdit, profile, canValidateStudio }) {
   const [articles, setArticles] = useState(() => getAllArticles());
   const [activeCat, setActiveCat] = useState("all");
+  const [activeStatus, setActiveStatus] = useState("all");
+  const [scope, setScope] = useState("mine");
   const [search, setSearch] = useState("");
+  const [authorFilter, setAuthorFilter] = useState("");
 
   useEffect(() => {
     const refresh = () => setArticles(getAllArticles());
@@ -883,9 +938,14 @@ function ArticlesManager({ onEdit }) {
   }, []);
 
   const filtered = articles.filter((a) => {
+    const mine = a.authorProfileId ? a.authorProfileId === profile?.id : (a.author || "").toLowerCase() === (profile?.username || "").toLowerCase();
+    const pendingValidation = ["submitted", "validated"].includes(a.status);
+    const matchScope = scope === "mine" ? mine : pendingValidation;
     const matchCat = activeCat === "all" || a.category === activeCat;
+    const matchStatus = activeStatus === "all" || a.status === activeStatus;
     const matchSearch = !search || (a.title || "").toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchSearch;
+    const matchAuthor = !authorFilter || (a.author || "").toLowerCase().includes(authorFilter.toLowerCase());
+    return matchScope && matchCat && matchStatus && matchSearch && matchAuthor;
   });
 
   const countByCat = (catId) => articles.filter((a) => a.category === catId).length;
@@ -899,20 +959,41 @@ function ArticlesManager({ onEdit }) {
     toggleFeatured(id);
   };
 
+  const drafts = filtered.filter((a) => a.status === "draft");
+  const submitted = filtered.filter((a) => a.status === "submitted");
+  const validated = filtered.filter((a) => a.status === "validated");
+  const refused = filtered.filter((a) => a.status === "refused");
   const published = filtered.filter((a) => a.status === "published");
-  const drafts    = filtered.filter((a) => a.status === "draft");
 
   return (
     <div className="artmgr-wrap">
       {/* Top bar */}
       <div className="artmgr-topbar">
         <div>
-          <h2 className="artmgr-heading">Mes articles</h2>
+          <h2 className="artmgr-heading">{scope === "mine" ? "Mes contenus" : "À valider"}</h2>
           <p className="artmgr-sub">
             {articles.length} article{articles.length !== 1 ? "s" : ""} au total —{" "}
             {articles.filter((a) => a.status === "published").length} publiés,{" "}
             {articles.filter((a) => a.status === "draft").length} brouillons
           </p>
+          <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+            <button className={`db-btn ${scope === "mine" ? "db-btn--publish" : "db-btn--draft"}`} onClick={() => setScope("mine")}>
+              Mes contenus
+            </button>
+            {canValidateStudio && (
+              <button className={`db-btn ${scope === "validation" ? "db-btn--publish" : "db-btn--draft"}`} onClick={() => setScope("validation")}>
+                À valider
+              </button>
+            )}
+            <select className="db-select" value={activeStatus} onChange={(e) => setActiveStatus(e.target.value)} style={{ maxWidth: 220 }}>
+              <option value="all">Tous statuts</option>
+              <option value="draft">Brouillon</option>
+              <option value="submitted">Soumis</option>
+              <option value="validated">Validé</option>
+              <option value="refused">Refusé</option>
+              <option value="published">Publié</option>
+            </select>
+          </div>
         </div>
         <input
           className="artmgr-search"
@@ -920,6 +1001,13 @@ function ArticlesManager({ onEdit }) {
           placeholder="Rechercher par titre…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+        />
+        <input
+          className="artmgr-search"
+          type="search"
+          placeholder="Filtrer par auteur…"
+          value={authorFilter}
+          onChange={(e) => setAuthorFilter(e.target.value)}
         />
       </div>
 
@@ -951,6 +1039,36 @@ function ArticlesManager({ onEdit }) {
             </div>
           ) : (
             <>
+              {submitted.length > 0 && (
+                <div className="artmgr-group">
+                  <p className="artmgr-group-label">
+                    Soumis <span className="artmgr-group-count">{submitted.length}</span>
+                  </p>
+                  {submitted.map((a) => (
+                    <ArticleRow key={a.id} article={a} onEdit={onEdit} onDelete={handleDelete} onToggleFeatured={handleToggleFeatured} />
+                  ))}
+                </div>
+              )}
+              {validated.length > 0 && (
+                <div className="artmgr-group">
+                  <p className="artmgr-group-label">
+                    Validés <span className="artmgr-group-count">{validated.length}</span>
+                  </p>
+                  {validated.map((a) => (
+                    <ArticleRow key={a.id} article={a} onEdit={onEdit} onDelete={handleDelete} onToggleFeatured={handleToggleFeatured} />
+                  ))}
+                </div>
+              )}
+              {refused.length > 0 && (
+                <div className="artmgr-group">
+                  <p className="artmgr-group-label">
+                    Refusés <span className="artmgr-group-count">{refused.length}</span>
+                  </p>
+                  {refused.map((a) => (
+                    <ArticleRow key={a.id} article={a} onEdit={onEdit} onDelete={handleDelete} onToggleFeatured={handleToggleFeatured} />
+                  ))}
+                </div>
+              )}
               {published.length > 0 && (
                 <div className="artmgr-group">
                   <p className="artmgr-group-label">
@@ -982,6 +1100,14 @@ function ArticlesManager({ onEdit }) {
 function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
   const cat = CAT_LIST.find((c) => c.id === article.category) || { label: article.category, icon: "✦" };
   const isPublished = article.status === "published";
+  const statusLabels = {
+    draft: "○ Brouillon",
+    submitted: "◐ Soumis",
+    validated: "◉ Validé",
+    refused: "✕ Refusé",
+    published: "● Publié",
+    scheduled: "◌ Programmé",
+  };
 
   return (
     <div className={`artmgr-row${article.featured ? " artmgr-row--featured" : ""}`}>
@@ -1011,7 +1137,7 @@ function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
             })}
           </span>
           <span className={`artmgr-status artmgr-status--${article.status}`}>
-            {isPublished ? "● Publié" : "○ Brouillon"}
+            {statusLabels[article.status] || article.status}
           </span>
         </div>
       </div>
@@ -1046,13 +1172,55 @@ function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
 
 /* ── Profils & Accès ────────────────────────────────────── */
 
-const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "" };
+const PERM_LABELS = {
+  view_profile:       "Voir les profils publics",
+  edit_profile:       "Modifier son profil",
+  vote_poll:          "Voter aux sondages",
+  access_dashboard:   "Accès tableau de bord",
+  access_studio:      "Accès studio éditeur",
+  create_fanarts:     "Créer des fan-arts",
+  publish_fanarts:    "Publier des fan-arts",
+  create_actualites:  "Créer des actualités",
+  publish_actualites: "Publier des actualités",
+  manage_content:     "Gérer le contenu",
+  manage_media:       "Gérer la médiathèque",
+};
 
+function PermissionsPreview({ role }) {
+  const perms = PROFILE_LEVELS[normalizeRole(role)]?.permissions || [];
+  const full  = perms.includes("*");
+  return (
+    <div className="prof-perms">
+      <p className="prof-perms-label">Permissions du profil d'accès sélectionné :</p>
+      <div className="prof-perms-list">
+        {full ? (
+          <span className="prof-perm-chip prof-perm-chip--wildcard">★ Accès complet — toutes les permissions</span>
+        ) : perms.length === 0 ? (
+          <span className="prof-perm-chip prof-perm-chip--none">Aucune permission d'accès</span>
+        ) : (
+          perms.map((p) => (
+            <span key={p} className="prof-perm-chip">{PERM_LABELS[p] || p}</span>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+const EMPTY_PROFILE = { id: null, name: "", role: DEFAULT_LEVEL, username: "" };
+
+// eslint-disable-next-line no-unused-vars
 function ProfilesSection() {
   const { profile: currentProfile } = useAuth();
   const [profiles, setProfiles] = useState(() => getProfiles());
   const [form, setForm] = useState(EMPTY_PROFILE);
+  const [originalForm, setOriginalForm] = useState(EMPTY_PROFILE);
   const [editing, setEditing] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  const editingProtectedProfile = editing && isProtectedAccessProfile(form);
+  const isDirty = editing && !!form.id && (form.role !== originalForm.role || form.name !== originalForm.name);
 
   useEffect(() => {
     const refresh = () => setProfiles(getProfiles());
@@ -1062,36 +1230,62 @@ function ProfilesSection() {
 
   const setF = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
-  const handleEdit = (profile) => {
-    setForm({ ...profile });
+  const handleEdit = (p) => {
+    setForm({ ...p });
+    setOriginalForm({ ...p });
     setEditing(true);
+    setSaved(false);
+    setSaveError("");
   };
 
   const handleNew = () => {
     setForm(EMPTY_PROFILE);
+    setOriginalForm(EMPTY_PROFILE);
     setEditing(true);
+    setSaved(false);
+    setSaveError("");
   };
 
-  const handleSave = () => {
-    if (!form.username.trim() || !form.name.trim()) return;
+  const handleSave = async () => {
+    setSaveError("");
+    if (!form.username.trim() || !form.name.trim()) {
+      setSaveError("Le nom et l'identifiant sont requis.");
+      return;
+    }
     const conflict = profiles.find(
       (p) => p.username.toLowerCase() === form.username.toLowerCase() && p.id !== form.id
     );
-    if (conflict) { alert("Cet identifiant est déjà utilisé par un autre profil."); return; }
-    saveProfile(form);
-    setEditing(false);
-    setForm(EMPTY_PROFILE);
+    if (conflict) { setSaveError("Cet identifiant est déjà utilisé par un autre profil."); return; }
+    try {
+      await saveProfile(form);
+      setSaved(true);
+      setTimeout(() => {
+        setEditing(false);
+        setForm(EMPTY_PROFILE);
+        setSaved(false);
+      }, 1500);
+    } catch {
+      setSaveError("Erreur lors de l'enregistrement. Réessayez.");
+    }
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
+    const target = profiles.find((p) => p.id === id);
+    if (isProtectedAccessProfile(target)) {
+      alert("Le profil association est verrouillé et ne peut pas être supprimé.");
+      return;
+    }
     if (profiles.length <= 1) { alert("Impossible de supprimer le dernier profil."); return; }
     if (!window.confirm("Supprimer ce profil définitivement ?")) return;
-    deleteProfile(id);
+    await deleteProfile(id);
   };
 
-  const handleCancel = () => { setEditing(false); setForm(EMPTY_PROFILE); };
-
-  const roleColor = ROLE_COLORS;
+  const handleCancel = () => {
+    setEditing(false);
+    setForm(EMPTY_PROFILE);
+    setSaved(false);
+    setSaveError("");
+  };
 
   return (
     <div className="prof-section">
@@ -1099,10 +1293,10 @@ function ProfilesSection() {
         <div>
           <h2 className="prof-heading">Profils &amp; Accès</h2>
           <p className="prof-desc">
-            Gérez les profils applicatifs ayant accès au tableau de bord. Les mots de passe sont gérés par Supabase Auth.
+            Gérez les profils d'accès au tableau de bord. Les mots de passe sont gérés par Supabase Auth.
             {currentProfile && <span className="prof-session"> Connecté en tant que <strong>{currentProfile.username}</strong>.</span>}
           </p>
-          <p className="prof-note">⚠ Aucun mot de passe n'est stocké dans les profils.</p>
+          <p className="prof-note">Le profil d'accès détermine les permissions techniques. Les badges visuels se gèrent dans l'onglet Badges.</p>
         </div>
         {!editing && (
           <button className="prof-new-btn" onClick={handleNew}>
@@ -1111,23 +1305,36 @@ function ProfilesSection() {
         )}
       </div>
 
-      {/* Form */}
       {editing && (
         <div className="prof-form">
-          <h3 className="prof-form-title">{form.id ? "Modifier le profil" : "Nouveau profil"}</h3>
+          <h3 className="prof-form-title">{form.id ? "Modifier le profil d'accès" : "Nouveau profil d'accès"}</h3>
+          {editingProtectedProfile && (
+            <p className="prof-form-note">
+              Ce profil est verrouillé : son identifiant et son profil d'accès ne sont pas modifiables.
+            </p>
+          )}
+          {isDirty && !saved && (
+            <p className="prof-form-dirty">⚠ Modifications non enregistrées</p>
+          )}
           <div className="prof-form-grid">
             <div className="prof-form-field">
-              <label className="prof-label">Nom du profil</label>
+              <label className="prof-label">Nom affiché</label>
               <input
                 className="db-input"
                 placeholder="Ex : Communication"
                 value={form.name}
-                onChange={(e) => setF("name", e.target.value)}
+                onChange={(e) => { setF("name", e.target.value); setSaved(false); }}
+                disabled={editingProtectedProfile}
               />
             </div>
             <div className="prof-form-field">
-              <label className="prof-label">Rôle</label>
-              <select className="db-select" value={form.role} onChange={(e) => setF("role", e.target.value)}>
+              <label className="prof-label">Profil d'accès</label>
+              <select
+                className="db-select"
+                value={form.role}
+                onChange={(e) => { setF("role", e.target.value); setSaved(false); }}
+                disabled={editingProtectedProfile}
+              >
                 {Object.entries(ROLE_LABELS).map(([k, v]) => (
                   <option key={k} value={k}>{v}</option>
                 ))}
@@ -1139,28 +1346,41 @@ function ProfilesSection() {
                 className="db-input"
                 placeholder="Ex : mario.comm"
                 value={form.username}
-                onChange={(e) => setF("username", e.target.value)}
+                onChange={(e) => { setF("username", e.target.value); setSaved(false); }}
                 autoComplete="off"
+                disabled={editingProtectedProfile || !!form.id}
               />
+              {!!form.id && !editingProtectedProfile && (
+                <span className="prof-field-hint">L'identifiant de connexion ne peut pas être modifié.</span>
+              )}
             </div>
           </div>
+
+          <PermissionsPreview role={form.role} />
+
+          {saveError && <p className="prof-form-error">{saveError}</p>}
+          {saved     && <p className="prof-form-saved">✓ Profil enregistré</p>}
+
           <div className="prof-form-actions">
-            <button className="db-btn db-btn--publish prof-save-btn" onClick={handleSave}>
-              {form.id ? "✓ Enregistrer les paramètres" : "✓ Créer le profil"}
+            <button
+              className="db-btn db-btn--publish prof-save-btn"
+              onClick={handleSave}
+              disabled={editingProtectedProfile && !!form.id}
+            >
+              {saved ? "✓ Enregistré" : form.id ? "Enregistrer les modifications →" : "✓ Créer le profil"}
             </button>
             <button className="db-btn db-btn--cancel" onClick={handleCancel}>Annuler</button>
           </div>
         </div>
       )}
 
-      {/* Profiles list */}
       <div className="prof-list">
         {profiles.map((p) => (
           <div key={p.id} className="prof-card">
             <div className="prof-card-left">
               <span
                 className="prof-role-dot"
-                style={{ background: roleColor[p.role] || "#999" }}
+                style={{ background: ROLE_COLORS[p.role] || "#999" }}
                 title={ROLE_LABELS[p.role] || p.role}
               />
               <div className="prof-card-info">
@@ -1169,10 +1389,13 @@ function ProfilesSection() {
               </div>
               <span
                 className="prof-role-badge"
-                style={{ background: `${roleColor[p.role] || "#999"}18`, color: roleColor[p.role] || "#999" }}
+                style={{ background: `${ROLE_COLORS[p.role] || "#999"}18`, color: ROLE_COLORS[p.role] || "#999" }}
               >
                 {ROLE_LABELS[p.role] || p.role}
               </span>
+              {isProtectedAccessProfile(p) && (
+                <span className="prof-lock-badge">Verrouillé</span>
+              )}
               {currentProfile?.id === p.id && (
                 <span className="prof-you-badge">Vous</span>
               )}
@@ -1191,7 +1414,7 @@ function ProfilesSection() {
               <button
                 className="prof-action-btn prof-action-btn--delete"
                 onClick={() => handleDelete(p.id)}
-                disabled={profiles.length <= 1}
+                disabled={profiles.length <= 1 || isProtectedAccessProfile(p)}
               >
                 Supprimer
               </button>
@@ -1677,30 +1900,41 @@ function ArticlePreview({ form, category }) {
 
 /* ── Membres ─────────────────────────────────────────────── */
 
+// eslint-disable-next-line no-unused-vars
 function MembresSection() {
-  const [members, setMembers] = useState(() => getAllMembers());
+  const [members, setMembers] = useState(() => getProfiles());
   const [search, setSearch] = useState("");
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const refresh = () => setMembers(getAllMembers());
-    window.addEventListener("woltar:members", refresh);
-    return () => window.removeEventListener("woltar:members", refresh);
+    const load = async () => {
+      const res = await reloadProfilesCache();
+      setMembers(getProfiles());
+      setLoadError(res?.ok === false ? (res.error || "Erreur inconnue") : "");
+    };
+    const refresh = () => setMembers(getProfiles());
+    window.addEventListener("woltar:profiles", refresh);
+    load();
+    return () => window.removeEventListener("woltar:profiles", refresh);
   }, []);
 
-  const filtered = members.filter(
-    (m) =>
-      m.pseudo.toLowerCase().includes(search.toLowerCase()) ||
-      (m.woltarien1 || "").toLowerCase().includes(search.toLowerCase()) ||
-      (m.woltarien2 || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = members.filter((m) => {
+    const q = search.toLowerCase();
+    return (
+      (m.username || "").toLowerCase().includes(q) ||
+      (m.name || "").toLowerCase().includes(q) ||
+      (m.woltarien1 || "").toLowerCase().includes(q) ||
+      (m.woltarien2 || "").toLowerCase().includes(q)
+    );
+  });
 
-  const handleRoleChange = (member, role) => {
-    upsertMember({ ...member, role });
+  const handleProfileLevelChange = async (member, role) => {
+    await saveProfile({ ...member, role });
   };
 
-  const handleDelete = (member) => {
-    if (!window.confirm(`Supprimer le compte de ${member.pseudo} ?`)) return;
-    deleteMember(member.id);
+  const handleDelete = async (member) => {
+    if (!window.confirm(`Supprimer le profil de ${member.username || member.name || "ce membre"} ?`)) return;
+    await deleteProfile(member.id);
   };
 
   return (
@@ -1710,7 +1944,7 @@ function MembresSection() {
           <h2 className="mbr-heading">Membres inscrits</h2>
           <p className="mbr-desc">
             {members.length} compte{members.length !== 1 ? "s" : ""} enregistré{members.length !== 1 ? "s" : ""}.
-            Gérez les rôles et accès des membres de la communauté.
+            Gérez les profils d'accès de la communauté.
           </p>
         </div>
         <input
@@ -1721,6 +1955,11 @@ function MembresSection() {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+      {loadError && (
+        <div className="mbr-empty" style={{ color: "#e74c3c" }}>
+          Impossible de charger les profils depuis Supabase : {loadError}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="mbr-empty">
@@ -1734,14 +1973,14 @@ function MembresSection() {
             <div className="mbr-card" key={m.id}>
               <div className="mbr-card-left">
                 <div className="mbr-avatar">
-                  {m.avatar ? (
-                    <img src={m.avatar} alt={m.pseudo} className="mbr-avatar-img" />
+                  {m.avatarUrl ? (
+                    <img src={m.avatarUrl} alt={m.username || m.name || "profil"} className="mbr-avatar-img" />
                   ) : (
                     <span className="mbr-avatar-icon">👤</span>
                   )}
                 </div>
                 <div className="mbr-info">
-                  <div className="mbr-pseudo">{m.pseudo}</div>
+                  <div className="mbr-pseudo">{m.username || m.name || "Profil sans pseudo"}</div>
                   <div className="mbr-woltariens">
                     {m.woltarien1}
                     {m.woltarien2 && <span> · {m.woltarien2}</span>}
@@ -1756,17 +1995,19 @@ function MembresSection() {
               <div className="mbr-card-right">
                 <select
                   className="mbr-role-select"
-                  value={m.role || "membre"}
-                  onChange={(e) => handleRoleChange(m, e.target.value)}
+                  value={normalizeRole(m.role || DEFAULT_LEVEL)}
+                  onChange={(e) => handleProfileLevelChange(m, e.target.value)}
+                  disabled={isProtectedAccessProfile(m)}
                 >
-                  {Object.entries(MEMBER_ROLE_LABELS).map(([val, label]) => (
+                  {Object.entries(ROLE_LABELS).map(([val, label]) => (
                     <option key={val} value={val}>{label}</option>
                   ))}
                 </select>
                 <button
                   className="mbr-delete-btn"
                   onClick={() => handleDelete(m)}
-                  title="Supprimer ce compte"
+                  title="Supprimer ce profil"
+                  disabled={isProtectedAccessProfile(m)}
                 >
                   ×
                 </button>

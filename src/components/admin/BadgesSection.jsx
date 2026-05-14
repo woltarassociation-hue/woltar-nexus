@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { getBadges, getProfileUserBadges, saveProfileBadges } from "../../lib/badges";
-import { getProfiles } from "../../lib/profiles";
+import { clearBadgesCache, getBadges, getProfileUserBadges, reloadBadgesCache, saveProfileBadges } from "../../lib/badges";
+import { getProfiles, reloadProfilesCache } from "../../lib/profiles";
 
 const CATEGORY_LABELS = {
   officiel:   "Officiel",
@@ -21,6 +21,25 @@ export default function BadgesSection() {
   const [localBadges, setLocalBadges] = useState({});
   const [saveStatus, setSaveStatus]   = useState(null);
   const [saveError, setSaveError]     = useState("");
+  const [loadError, setLoadError]     = useState("");
+  const [loading, setLoading]         = useState(false);
+
+  async function loadAll({ invalidate = false } = {}) {
+    setLoading(true);
+    if (invalidate) clearBadgesCache();
+    const [badgesRes, profilesRes] = await Promise.all([
+      reloadBadgesCache(),
+      reloadProfilesCache(),
+    ]);
+    setBadges(getBadges());
+    setProfiles(getProfiles());
+    const errors = [badgesRes, profilesRes]
+      .filter((r) => r && r.ok === false)
+      .map((r) => r.error)
+      .filter(Boolean);
+    setLoadError(errors.length > 0 ? errors.join(" | ") : "");
+    setLoading(false);
+  }
 
   useEffect(() => {
     const refresh = () => {
@@ -31,7 +50,9 @@ export default function BadgesSection() {
     const refreshProfiles = () => setProfiles(getProfiles());
     window.addEventListener("woltar:badges",   refresh);
     window.addEventListener("woltar:profiles", refreshProfiles);
+    const timer = setTimeout(() => { void loadAll(); }, 0);
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("woltar:badges",   refresh);
       window.removeEventListener("woltar:profiles", refreshProfiles);
     };
@@ -121,11 +142,26 @@ export default function BadgesSection() {
   return (
     <div className="rpx-panel">
       <div className="rpx-panel-header">
-        <h2 className="rpx-page-title">◈ BADGES</h2>
-        <p className="rpx-page-subtitle">
-          Attributs visuels et distinctions — sans effet sur les niveaux d'accès
-        </p>
+        <div>
+          <h2 className="rpx-page-title">◈ BADGES</h2>
+          <p className="rpx-page-subtitle">
+            Attributs visuels et distinctions — sans effet sur les niveaux d'accès
+          </p>
+        </div>
+        <button
+          className="rpx-btn rpx-btn--sm"
+          onClick={() => loadAll({ invalidate: true })}
+          disabled={loading}
+          type="button"
+        >
+          {loading ? "Chargement..." : "Rafraîchir"}
+        </button>
       </div>
+      {loadError && (
+        <div className="rpx-empty" style={{ color: "#e74c3c", marginBottom: "10px" }}>
+          Impossible de charger les badges depuis Supabase : {loadError}
+        </div>
+      )}
 
       <div className="rpx-roles-layout">
         {/* ── Sidebar profils ── */}
@@ -194,15 +230,15 @@ export default function BadgesSection() {
                               disabled={isSaving}
                               onChange={() => toggleBadge(selected.id, b.id)}
                             />
-                            <span className="rpx-perm-label" style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
-                              <span>{b.icon}</span>
-                              <span style={{ color: b.color, fontWeight: active ? 600 : 400 }}>{b.name}</span>
-                              {b.rarity && b.rarity !== "common" && (
-                                <span style={{ opacity: 0.45, fontSize: "0.72em", fontStyle: "italic" }}>{b.rarity}</span>
-                              )}
-                              {b.description && (
-                                <span style={{ opacity: 0.45, fontSize: "0.78em" }}>— {b.description}</span>
-                              )}
+                            <span className="rpx-perm-label rpx-badge-pill-wrap">
+                              <span className="rpx-badge-pill" style={{ "--badge-color": b.color }}>
+                                <span className="rpx-badge-pill-icon">{b.icon}</span>
+                                <span className="rpx-badge-pill-name">{b.name}</span>
+                                {b.rarity && b.rarity !== "common" && (
+                                  <span className="rpx-badge-pill-rarity">{b.rarity}</span>
+                                )}
+                              </span>
+                              {b.description && <span className="rpx-badge-pill-desc">{b.description}</span>}
                             </span>
                           </label>
                           {active && (
