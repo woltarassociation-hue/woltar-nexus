@@ -1,33 +1,42 @@
 import { useState, useEffect } from "react";
-import { getBadges, getBadgeIdsForProfile, saveProfileBadges } from "../../lib/badges";
+import { getBadges, getProfileUserBadges, saveProfileBadges } from "../../lib/badges";
 import { getProfiles } from "../../lib/profiles";
 
+const CATEGORY_LABELS = {
+  officiel:   "Officiel",
+  creation:   "Création",
+  communaute: "Communauté",
+  evenements: "Événements",
+  general:    "Général",
+};
+
+const CATEGORY_ORDER = ["officiel", "creation", "communaute", "evenements", "general"];
+
 export default function BadgesSection() {
-  const [badges, setBadges]     = useState(() => getBadges());
-  const [profiles, setProfiles] = useState(() => getProfiles());
+  const [badges, setBadges]         = useState(() => getBadges());
+  const [profiles, setProfiles]     = useState(() => getProfiles());
   const [selectedId, setSelectedId] = useState(null);
 
-  // localBadgeIds: { [profileId]: string[] } — pending changes before save
-  const [localBadgeIds, setLocalBadgeIds] = useState({});
-  const [saveStatus, setSaveStatus]       = useState(null); // null | 'saving' | 'saved' | 'error'
-  const [saveError, setSaveError]         = useState("");
+  // localBadges: { [profileId]: { badge_id, badge_context }[] }
+  const [localBadges, setLocalBadges] = useState({});
+  const [saveStatus, setSaveStatus]   = useState(null);
+  const [saveError, setSaveError]     = useState("");
 
   useEffect(() => {
     const refresh = () => {
       setBadges(getBadges());
       setProfiles(getProfiles());
-      // Reset local overrides when remote data refreshes after a save
-      setLocalBadgeIds({});
+      setLocalBadges({});
     };
+    const refreshProfiles = () => setProfiles(getProfiles());
     window.addEventListener("woltar:badges",   refresh);
-    window.addEventListener("woltar:profiles", () => setProfiles(getProfiles()));
+    window.addEventListener("woltar:profiles", refreshProfiles);
     return () => {
       window.removeEventListener("woltar:badges",   refresh);
-      window.removeEventListener("woltar:profiles", () => setProfiles(getProfiles()));
+      window.removeEventListener("woltar:profiles", refreshProfiles);
     };
   }, []);
 
-  // Auto-dismiss 'saved' after 3 s
   useEffect(() => {
     if (saveStatus !== "saved") return;
     const t = setTimeout(() => setSaveStatus(null), 3000);
@@ -36,24 +45,45 @@ export default function BadgesSection() {
 
   const selected = profiles.find((p) => p.id === selectedId) ?? profiles[0];
 
+  function getEffectiveBadges(profileId) {
+    if (profileId in localBadges) return localBadges[profileId];
+    return getProfileUserBadges(profileId).map((ub) => ({
+      badge_id:      ub.badge_id,
+      badge_context: ub.badge_context ?? "",
+    }));
+  }
+
   function getEffectiveBadgeIds(profileId) {
-    if (profileId in localBadgeIds) return localBadgeIds[profileId];
-    return getBadgeIdsForProfile(profileId);
+    return getEffectiveBadges(profileId).map((b) => b.badge_id);
   }
 
   function hasLocalChanges() {
-    return Object.entries(localBadgeIds).some(([profileId, ids]) => {
-      const remote = getBadgeIdsForProfile(profileId);
-      return ids.length !== remote.length || ids.some((id) => !remote.includes(id));
+    return Object.entries(localBadges).some(([profileId, items]) => {
+      const remote = getProfileUserBadges(profileId);
+      if (items.length !== remote.length) return true;
+      return items.some((item) => {
+        const r = remote.find((ub) => ub.badge_id === item.badge_id);
+        if (!r) return true;
+        return (r.badge_context ?? "") !== item.badge_context;
+      });
     });
   }
 
   function toggleBadge(profileId, badgeId) {
-    const current = getEffectiveBadgeIds(profileId);
-    const next = current.includes(badgeId)
-      ? current.filter((id) => id !== badgeId)
-      : [...current, badgeId];
-    setLocalBadgeIds((prev) => ({ ...prev, [profileId]: next }));
+    const current  = getEffectiveBadges(profileId);
+    const isActive = current.some((b) => b.badge_id === badgeId);
+    const next     = isActive
+      ? current.filter((b) => b.badge_id !== badgeId)
+      : [...current, { badge_id: badgeId, badge_context: "" }];
+    setLocalBadges((prev) => ({ ...prev, [profileId]: next }));
+    setSaveStatus(null);
+  }
+
+  function updateContext(profileId, badgeId, ctx) {
+    const next = getEffectiveBadges(profileId).map((b) =>
+      b.badge_id === badgeId ? { ...b, badge_context: ctx } : b
+    );
+    setLocalBadges((prev) => ({ ...prev, [profileId]: next }));
     setSaveStatus(null);
   }
 
@@ -62,17 +92,16 @@ export default function BadgesSection() {
     setSaveError("");
     try {
       const results = await Promise.all(
-        Object.entries(localBadgeIds).map(([profileId, ids]) =>
-          saveProfileBadges(profileId, ids)
+        Object.entries(localBadges).map(([profileId, items]) =>
+          saveProfileBadges(profileId, items)
         )
       );
       const failed = results.find((r) => !r.ok);
       if (failed) {
-        setSaveError(failed.error || "Erreur d'enregistrement");
+        setSaveError(failed.error || "Erreur inconnue");
         setSaveStatus("error");
       } else {
         setSaveStatus("saved");
-        // localBadgeIds cleared by woltar:badges event after loadAll()
       }
     } catch (err) {
       setSaveError(err.message || "Erreur inconnue");
@@ -83,11 +112,19 @@ export default function BadgesSection() {
   const isDirty  = hasLocalChanges();
   const isSaving = saveStatus === "saving";
 
+  const grouped = CATEGORY_ORDER.reduce((acc, cat) => {
+    const catBadges = badges.filter((b) => (b.category || "general") === cat);
+    if (catBadges.length > 0) acc[cat] = catBadges;
+    return acc;
+  }, {});
+
   return (
     <div className="rpx-panel">
       <div className="rpx-panel-header">
         <h2 className="rpx-page-title">◈ BADGES</h2>
-        <p className="rpx-page-subtitle">Attributs visuels et distinctions — sans effet sur les niveaux d'accès</p>
+        <p className="rpx-page-subtitle">
+          Attributs visuels et distinctions — sans effet sur les niveaux d'accès
+        </p>
       </div>
 
       <div className="rpx-roles-layout">
@@ -99,7 +136,7 @@ export default function BadgesSection() {
           ) : (
             profiles.map((p) => {
               const count   = getEffectiveBadgeIds(p.id).length;
-              const isLocal = p.id in localBadgeIds;
+              const isLocal = p.id in localBadges;
               return (
                 <button
                   key={p.id}
@@ -120,7 +157,7 @@ export default function BadgesSection() {
           )}
         </div>
 
-        {/* ── Panel badges ── */}
+        {/* ── Panel badges groupés ── */}
         <div className="rpx-perms-panel">
           {selected ? (
             <>
@@ -128,49 +165,64 @@ export default function BadgesSection() {
                 <span className="rpx-role-badge" style={{ background: "#4a4a6a" }}>
                   {selected.username || selected.pseudo || "—"}
                 </span>
-                {selected.locked && (
+                {selected.locked ? (
                   <span className="rpx-perms-hint" style={{ color: "#f39c12" }}>
                     🔒 Compte verrouillé — badges modifiables par les admins
                   </span>
-                )}
-                {!selected.locked && (
-                  <span className="rpx-perms-hint">Activez/désactivez les badges pour ce profil</span>
+                ) : (
+                  <span className="rpx-perms-hint">
+                    Activez/désactivez les badges · ajoutez un contexte si nécessaire
+                  </span>
                 )}
               </div>
 
               {badges.length === 0 ? (
                 <div className="rpx-empty">Aucun badge disponible.</div>
               ) : (
-                <div className="rpx-perm-group">
-                  {badges.map((b) => {
-                    const active = getEffectiveBadgeIds(selected.id).includes(b.id);
-                    return (
-                      <label
-                        key={b.id}
-                        className={`rpx-perm-row${active ? " rpx-perm-row--active" : ""}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={active}
-                          disabled={isSaving}
-                          onChange={() => toggleBadge(selected.id, b.id)}
-                        />
-                        <span
-                          className="rpx-perm-label"
-                          style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                        >
-                          <span>{b.icon}</span>
-                          <span style={{ color: b.color, fontWeight: active ? 600 : 400 }}>
-                            {b.name}
-                          </span>
-                          {b.description && (
-                            <span style={{ opacity: 0.55, fontSize: "0.8em" }}>— {b.description}</span>
+                Object.entries(grouped).map(([cat, catBadges]) => (
+                  <div key={cat} className="rpx-perm-group">
+                    <div className="rpx-perm-group-label">{CATEGORY_LABELS[cat] ?? cat}</div>
+                    {catBadges.map((b) => {
+                      const active = getEffectiveBadgeIds(selected.id).includes(b.id);
+                      const item   = getEffectiveBadges(selected.id).find((x) => x.badge_id === b.id);
+                      return (
+                        <div key={b.id}>
+                          <label className={`rpx-perm-row${active ? " rpx-perm-row--active" : ""}`}>
+                            <input
+                              type="checkbox"
+                              checked={active}
+                              disabled={isSaving}
+                              onChange={() => toggleBadge(selected.id, b.id)}
+                            />
+                            <span className="rpx-perm-label" style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1 }}>
+                              <span>{b.icon}</span>
+                              <span style={{ color: b.color, fontWeight: active ? 600 : 400 }}>{b.name}</span>
+                              {b.rarity && b.rarity !== "common" && (
+                                <span style={{ opacity: 0.45, fontSize: "0.72em", fontStyle: "italic" }}>{b.rarity}</span>
+                              )}
+                              {b.description && (
+                                <span style={{ opacity: 0.45, fontSize: "0.78em" }}>— {b.description}</span>
+                              )}
+                            </span>
+                          </label>
+                          {active && (
+                            <div style={{ paddingLeft: "28px", paddingBottom: "8px" }}>
+                              <input
+                                className="rpx-input rpx-input--sm"
+                                type="text"
+                                value={item?.badge_context ?? ""}
+                                onChange={(e) => updateContext(selected.id, b.id, e.target.value)}
+                                placeholder="Contexte optionnel (ex : Concours Noël 2026)"
+                                disabled={isSaving}
+                                style={{ width: "100%", maxWidth: "340px" }}
+                              />
+                            </div>
                           )}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
               )}
             </>
           ) : (
@@ -180,9 +232,8 @@ export default function BadgesSection() {
       </div>
 
       {/* ── Footer statut + sauvegarde ── */}
-      <div className="rpx-footer" style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderTop: "1px solid #2a2a3a", marginTop: "8px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderTop: "1px solid #2a2a3a", marginTop: "8px" }}>
         <button
-          className="rpx-save-btn"
           onClick={handleSave}
           disabled={!isDirty || isSaving}
           style={{
@@ -190,8 +241,8 @@ export default function BadgesSection() {
             borderRadius: "6px",
             border: "none",
             background: isDirty && !isSaving ? "#1fa8dc" : "#2a2a3a",
-            color: isDirty && !isSaving ? "#fff" : "#666",
-            cursor: isDirty && !isSaving ? "pointer" : "default",
+            color:      isDirty && !isSaving ? "#fff"    : "#666",
+            cursor:     isDirty && !isSaving ? "pointer" : "default",
             fontWeight: 600,
             transition: "background 0.2s",
           }}
@@ -200,19 +251,13 @@ export default function BadgesSection() {
         </button>
 
         {isDirty && !isSaving && saveStatus !== "saved" && (
-          <span style={{ color: "#f39c12", fontSize: "0.85em" }}>
-            ● Modifications non enregistrées
-          </span>
+          <span style={{ color: "#f39c12", fontSize: "0.85em" }}>● Modifications non enregistrées</span>
         )}
         {saveStatus === "saved" && (
-          <span style={{ color: "#2ecc71", fontSize: "0.85em" }}>
-            ✓ Enregistré
-          </span>
+          <span style={{ color: "#2ecc71", fontSize: "0.85em" }}>✓ Enregistré</span>
         )}
         {saveStatus === "error" && (
-          <span style={{ color: "#e74c3c", fontSize: "0.85em" }}>
-            ✗ Erreur : {saveError}
-          </span>
+          <span style={{ color: "#e74c3c", fontSize: "0.85em" }}>✗ Erreur : {saveError}</span>
         )}
       </div>
     </div>

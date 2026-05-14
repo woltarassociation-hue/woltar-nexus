@@ -9170,6 +9170,50 @@ footer:not(.site-footer) p {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   BADGE STRIP — /compte + futurs profils publics
+═══════════════════════════════════════════════════════════════ */
+.account-badges-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+  margin: 8px 0 20px;
+}
+
+.badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  white-space: nowrap;
+  cursor: default;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  border: 1px solid rgba(255,255,255,0.18);
+  position: relative;
+}
+.badge-pill:hover { transform: translateY(-2px); }
+
+.badge-pill-icon  { font-size: 12px; line-height: 1; }
+.badge-pill-name  { line-height: 1; }
+.badge-pill-context {
+  font-weight: 400;
+  opacity: 0.82;
+  font-size: 0.88em;
+}
+
+/* Pulsation légère pour les legendary */
+.badge-pill--legendary { animation: badge-legendary-pulse 3s ease-in-out infinite; }
+@keyframes badge-legendary-pulse {
+  0%, 100% { filter: brightness(1); }
+  50%       { filter: brightness(1.18); }
+}
+
+/* ═══════════════════════════════════════════════════════════════
    SONDAGES
 ═══════════════════════════════════════════════════════════════ */
 .polls-page { padding: 48px 0 80px; }

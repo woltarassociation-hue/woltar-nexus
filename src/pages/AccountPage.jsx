@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { signOut } from "../lib/auth.js";
 import { saveProfile } from "../lib/profiles";
 import { getRoleLabel } from "../lib/profileLevels";
 import { compressImage } from "../lib/imageUtils";
+import { getBadges, getProfileUserBadges } from "../lib/badges";
 
 export default function AccountPage() {
   const { user, profile, loading } = useAuth();
@@ -50,6 +51,18 @@ function AccountView({ user, profile, navigate }) {
   const [links, setLinks]           = useState(profile?.links || {});
   const [saved, setSaved]           = useState(false);
   const [error, setError]           = useState("");
+
+  const [allBadges, setAllBadges]       = useState(() => getBadges());
+  const [userBadges, setUserBadges]     = useState(() => profile?.id ? getProfileUserBadges(profile.id) : []);
+
+  useEffect(() => {
+    const refresh = () => {
+      setAllBadges(getBadges());
+      if (profile?.id) setUserBadges(getProfileUserBadges(profile.id));
+    };
+    window.addEventListener("woltar:badges", refresh);
+    return () => window.removeEventListener("woltar:badges", refresh);
+  }, [profile?.id]);
 
   const pseudo = profile?.username || user.username || user.pseudo || "Membre";
 
@@ -121,6 +134,7 @@ function AccountView({ user, profile, navigate }) {
         <div className="account-role">
           {getRoleLabel(profile?.role)}
         </div>
+        <BadgeStrip allBadges={allBadges} userBadges={userBadges} />
 
         <div className="setup-form account-form">
           <div className="setup-field">
@@ -192,6 +206,46 @@ function AccountView({ user, profile, navigate }) {
           Se déconnecter
         </button>
       </div>
+    </div>
+  );
+}
+
+function BadgeStrip({ allBadges, userBadges }) {
+  if (userBadges.length === 0) return null;
+
+  const visible = userBadges
+    .map((ub) => ({ ...allBadges.find((b) => b.id === ub.badge_id), context: ub.badge_context }))
+    .filter((b) => b.id);
+
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="account-badges-strip">
+      {visible.map((b) => {
+        const isLegendary = b.rarity === "legendary";
+        const isEpic      = b.rarity === "epic";
+        const glow = isLegendary
+          ? `0 0 14px ${b.color}99`
+          : isEpic
+          ? `0 0 7px ${b.color}66`
+          : "none";
+        const label = [b.name, b.context].filter(Boolean).join(" — ");
+        const tipText = [b.description, b.context ? `(${b.context})` : ""].filter(Boolean).join(" ");
+
+        return (
+          <span
+            key={b.id}
+            className={`badge-pill badge-pill--${b.rarity || "common"}`}
+            style={{ background: b.color, boxShadow: glow }}
+            title={tipText || b.name}
+            aria-label={label}
+          >
+            <span className="badge-pill-icon">{b.icon}</span>
+            <span className="badge-pill-name">{b.name}</span>
+            {b.context && <span className="badge-pill-context">{b.context}</span>}
+          </span>
+        );
+      })}
     </div>
   );
 }
