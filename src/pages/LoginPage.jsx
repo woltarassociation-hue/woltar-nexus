@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 
 import { signInFromMembers } from "../lib/auth.js";
+import { isAdminRole } from "../lib/communityRoles.js";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function LoginPage() {
     const { user, error: err } = await signInFromMembers(username, password);
     setLoading(false);
     if (err) { setError(err); return; }
-    const dest = user?.role === "admin" || user?.role === "super_admin"
+    const dest = isAdminRole(user?.role)
       ? "/association/dashboard"
       : redirectTo;
     navigate(dest, { replace: true });

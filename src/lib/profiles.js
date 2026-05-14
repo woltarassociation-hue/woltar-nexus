@@ -18,6 +18,16 @@ function sanitizeProfile(profile) {
   const safe = { ...profile };
   delete safe.password;
   delete safe.password_hash;
+  // _rawRole : valeur DB originale (admin, super_admin…) préservée pour les écritures.
+  // Ne pas normaliser tant que la migration SQL n'a pas posé la contrainte.
+  if (safe._rawRole === undefined) {
+    safe._rawRole = safe.role ?? null;
+  } else {
+    // Si le rôle a été explicitement changé (formes normalisées différentes), on suit le changement.
+    if (normalizeRole(safe._rawRole || DEFAULT_ROLE) !== normalizeRole(safe.role || DEFAULT_ROLE)) {
+      safe._rawRole = safe.role ?? null;
+    }
+  }
   safe.role = normalizeRole(safe.role || DEFAULT_ROLE);
   safe.name = safe.name || safe.displayName || safe.display_name || safe.username || "";
   return safe;
@@ -34,7 +44,7 @@ function toRemoteProfile(profile) {
     username: safe.username,
     name: safe.name || safe.username,
     display_name: safe.displayName || safe.display_name || safe.name || safe.username,
-    role: safe.role,
+    role: safe._rawRole ?? safe.role,
     avatar_url: safe.avatarUrl || safe.avatar_url || null,
     bio: safe.bio || "",
     woltarien1: safe.woltarien1 || "",
