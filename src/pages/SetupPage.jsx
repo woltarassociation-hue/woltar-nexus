@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { isConfigured, saveProfile, setSession } from "../lib/profiles";
+import { registerWithUsername, signInFromMembers } from "../lib/auth.js";
+import { isConfigured, saveProfile } from "../lib/profiles";
 
 export default function SetupPage() {
   const navigate = useNavigate();
@@ -14,14 +15,22 @@ export default function SetupPage() {
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     if (!username.trim()) { setError("L'identifiant est requis."); return; }
     if (password.length < 6) { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
     if (password !== confirm) { setError("Les mots de passe ne correspondent pas."); return; }
-    const profile = saveProfile({ name: name.trim() || "Administrateur", role: "admin", username: username.trim(), password });
-    setSession(profile);
+    const { user, error: authErr } = await registerWithUsername(username.trim(), password);
+    if (authErr) { setError(authErr); return; }
+    await saveProfile({
+      id:          user?.id || crypto.randomUUID(),
+      name:        name.trim() || "Administrateur",
+      displayName: name.trim() || "Administrateur",
+      role:        "admin",
+      username:    username.trim(),
+    });
+    await signInFromMembers(username.trim(), password);
     setStep("done");
   };
 
@@ -146,7 +155,7 @@ export default function SetupPage() {
             </form>
 
             <p className="setup-notice">
-              Les identifiants sont stockés localement sur cet appareil.<br />
+              Le mot de passe est géré par Supabase Auth et n'est pas stocké dans le profil.<br />
               D'autres profils pourront être ajoutés depuis le tableau de bord.
             </p>
           </>

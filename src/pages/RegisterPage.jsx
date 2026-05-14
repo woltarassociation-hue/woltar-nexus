@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerWithUsername } from "../lib/auth.js";
-import { upsertMember, pseudoExists } from "../lib/members";
+import { getProfiles, saveProfile } from "../lib/profiles";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -21,7 +21,10 @@ export default function RegisterPage() {
     setError("");
 
     if (!pseudo.trim())               { setError("Le pseudo est requis."); return; }
-    if (pseudoExists(pseudo))         { setError("Ce pseudo est déjà utilisé."); return; }
+    if (getProfiles().some((p) => p.username?.trim().toLowerCase() === pseudo.trim().toLowerCase())) {
+      setError("Ce pseudo est déjà utilisé.");
+      return;
+    }
     if (password.length < 6)          { setError("Le mot de passe doit contenir au moins 6 caractères."); return; }
     if (password !== confirm)         { setError("Les mots de passe ne correspondent pas."); return; }
     if (!woltarien1.trim())           { setError("Indique au moins un personnage woltarien."); return; }
@@ -30,15 +33,13 @@ export default function RegisterPage() {
     const { user, error: authErr } = await registerWithUsername(pseudo.trim(), password);
     if (authErr) { setError(authErr); setLoading(false); return; }
 
-    // Enregistrer les données communauté (sans mot de passe)
-    await upsertMember({
-      id:         user?.id || crypto.randomUUID(),
-      authId:     user?.id || null,
-      pseudo:     pseudo.trim(),
-      woltarien1: woltarien1.trim(),
-      woltarien2: woltarien2.trim() || null,
-      avatar:     null,
-      role:       "membre",
+    // Enregistrer le profil applicatif (sans mot de passe)
+    await saveProfile({
+      id:          user?.id || crypto.randomUUID(),
+      name:        pseudo.trim(),
+      username:    pseudo.trim(),
+      displayName: pseudo.trim(),
+      role:        "membre",
     });
 
     setLoading(false);

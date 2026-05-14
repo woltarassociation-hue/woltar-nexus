@@ -1,5 +1,5 @@
 import { supabase, withTimeout } from "./db.js";
-import { getMemberByAuthIdRemote } from "./members.js";
+import { getProfiles } from "./profiles.js";
 
 // ── Session locale (table members) ────────────────────────────────────────────
 
@@ -20,12 +20,44 @@ function clearMemberSession() {
 
 // ── Connexion directe via la table members ─────────────────────────────────────
 
+function normalizeUsername(username) {
+  return (username || "").trim();
+}
+
+function profileToSession(profile, authUser, fallbackUsername) {
+  const username = profile?.username || profile?.display_name || fallbackUsername;
+  return {
+    id:       profile?.id || authUser.id,
+    authId:   authUser.id,
+    pseudo:   username,
+    username,
+    role:     profile?.role || "membre",
+    authType: "supabase",
+  };
+}
+
+export async function getProfileByUsername(username) {
+  if (!username) return null;
+  const clean = normalizeUsername(username);
+  if (supabase) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from("profiles").select("*").eq("username", clean).maybeSingle()
+      );
+      if (!error && data) return data;
+    } catch {
+      // Fall back to the local profiles cache below.
+    }
+  }
+  return getProfiles().find((p) => p.username?.trim().toLowerCase() === clean.toLowerCase()) || null;
+}
+
 export async function signInFromMembers(username, password) {
   if (!supabase) {
     return { user: null, error: "Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local" };
   }
 
-  const pseudo = username.trim();
+  const pseudo = normalizeUsername(username);
 
   let authData;
   try {
@@ -47,16 +79,9 @@ export async function signInFromMembers(username, password) {
     return { user: null, error: "Pseudo ou mot de passe incorrect." };
   }
 
-  const member = await getMemberByAuthIdRemote(authUser.id);
-  const profile = member ? null : await getUserProfile(authUser.id);
-
-  const session = {
-    id:       member?.id || authUser.id,
-    authId:   authUser.id,
-    pseudo:   member?.pseudo || profile?.username || profile?.display_name || pseudo,
-    role:     member?.role || profile?.role || "membre",
-    authType: "supabase",
-  };
+  const profileByUsername = await getProfileByUsername(pseudo);
+  const profileByAuthId = profileByUsername ? null : await getUserProfile(authUser.id);
+  const session = profileToSession(profileByUsername || profileByAuthId, authUser, pseudo);
 
   setMemberSession(session);
   window.dispatchEvent(new Event("woltar:auth"));
@@ -76,18 +101,19 @@ export async function signOut() {
 // ── Supabase Auth (inscription, connexion via Auth) ────────────────────────────
 
 function pseudoToEmail(pseudo) {
-  return `${pseudo.trim().toLowerCase().replace(/[^a-z0-9._-]/g, "_")}@woltar.nexus`;
+  return `${normalizeUsername(pseudo).toLowerCase().replace(/[^a-z0-9._-]/g, "_")}@woltar.nexus`;
 }
 
 export async function registerWithUsername(username, password) {
   if (!supabase) {
     return { user: null, error: "Supabase non configuré. Vérifiez VITE_SUPABASE_URL et VITE_SUPABASE_ANON_KEY dans .env.local" };
   }
-  const email = pseudoToEmail(username);
+  const clean = normalizeUsername(username);
+  const email = pseudoToEmail(clean);
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { username: username.trim(), display_name: username.trim() } },
+    options: { data: { username: clean, display_name: clean } },
   });
   if (error) return { user: null, error: error.message };
   return { user: data.user, error: null };
@@ -96,16 +122,18 @@ export async function registerWithUsername(username, password) {
 // ── Profil utilisateur ─────────────────────────────────────────────────────────
 
 export async function getUserProfile(userId) {
-  if (!supabase || !userId) return null;
-  try {
-    const { data, error } = await withTimeout(
-      supabase.from("profiles").select("*").eq("id", userId).single()
-    );
-    if (error) return null;
-    return data;
-  } catch {
-    return null;
+  if (!userId) return null;
+  if (supabase) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from("profiles").select("*").eq("id", userId).single()
+      );
+      if (!error && data) return data;
+    } catch {
+      // Fall back to the local profiles cache below.
+    }
   }
+  return getProfiles().find((p) => p.id === userId || p.authId === userId) || null;
 }
 
 // ── Rôles et permissions ───────────────────────────────────────────────────────
@@ -126,6 +154,7 @@ const ROLE_PERMISSIONS = {
     "vote_poll", "manage_members", "view_stats",
   ],
   redacteur:    ["create_article", "manage_drafts", "vote_poll"],
+  membre:       ["vote_poll"],
   lecteur:      ["vote_poll"],
 };
 

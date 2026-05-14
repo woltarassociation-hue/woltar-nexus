@@ -1,4 +1,4 @@
-import { supabase, withTimeout, toDb, fromDb } from "./db.js";
+import { supabase, withTimeout, fromDb } from "./db.js";
 
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";
@@ -6,22 +6,54 @@ const SESSION_KEY = "woltar_session";
 let _cache = null;
 
 export const ROLE_LABELS = {
+  super_admin: "Super Admin",
   admin: "Administrateur",
+  membre: "Membre",
+  charge_com: "Chargé communication",
+  animateur_rp: "Animateur RP",
+  moderateur: "Modérateur",
+  redacteur: "Rédacteur",
+  lecteur: "Lecteur",
   artiste: "Artistes",
   communication: "Communication",
   custom: "Personnalisé",
 };
 
 const DEFAULT_PROFILES = [
-  { id: "default-admin",  name: "Administrateur", role: "admin",         username: "association",   password: "woltar2026" },
-  { id: "default-artiste", name: "Artistes",       role: "artiste",       username: "artiste",       password: "woltar2026" },
-  { id: "default-comm",   name: "Communication",   role: "communication", username: "communication", password: "woltar2026" },
+  { id: "default-admin",  name: "Administrateur", role: "admin",         username: "association" },
+  { id: "default-artiste", name: "Artistes",       role: "artiste",       username: "artiste" },
+  { id: "default-comm",   name: "Communication",   role: "communication", username: "communication" },
 ];
+
+function sanitizeProfile(profile) {
+  const safe = { ...profile };
+  delete safe.password;
+  delete safe.password_hash;
+  safe.name = safe.name || safe.displayName || safe.display_name || safe.username || "";
+  return safe;
+}
+
+function sanitizeProfiles(profiles) {
+  return (profiles || []).map(sanitizeProfile);
+}
+
+function toRemoteProfile(profile) {
+  const safe = sanitizeProfile(profile);
+  return {
+    id: safe.id,
+    username: safe.username,
+    role: safe.role,
+    updated_at: safe.updatedAt || new Date().toISOString(),
+  };
+}
 
 function readLocal() {
   try {
     const stored = JSON.parse(localStorage.getItem(KEY) || "null");
-    return stored && stored.length > 0 ? stored : null;
+    if (!stored || stored.length === 0) return null;
+    const sanitized = sanitizeProfiles(stored);
+    localStorage.setItem(KEY, JSON.stringify(sanitized));
+    return sanitized;
   } catch { return null; }
 }
 
@@ -42,7 +74,7 @@ async function loadFromSupabase() {
     );
     if (error) throw error;
     if (data && data.length > 0) {
-      _cache = data.map(fromDb);
+      _cache = sanitizeProfiles(data.map(fromDb));
       localStorage.setItem(KEY, JSON.stringify(_cache));
       dispatch();
     }
@@ -77,8 +109,8 @@ export async function seedDefaultProfiles() {
           supabase.from("profiles").select("id").limit(1)
         );
         if (!data || data.length === 0) {
-          for (const p of existing) {
-            supabase.from("profiles").upsert([toDb(p)]).then(() => {});
+          for (const p of existing.filter((profile) => !String(profile.id).startsWith("default-"))) {
+            supabase.from("profiles").upsert([toRemoteProfile(p)]).then(() => {});
           }
         } else {
           // Supabase a déjà des profils — charger depuis Supabase
@@ -98,9 +130,11 @@ export async function seedDefaultProfiles() {
   localStorage.setItem(KEY, JSON.stringify(seeded));
 
   if (supabase) {
+    const remoteSeeded = seeded.filter((profile) => !String(profile.id).startsWith("default-"));
+    if (remoteSeeded.length === 0) return;
     try {
       await withTimeout(
-        supabase.from("profiles").upsert(seeded.map(toDb))
+        supabase.from("profiles").upsert(remoteSeeded.map(toRemoteProfile))
       );
     } catch (err) {
       console.warn("[profiles] Seeding Supabase failed:", err.message);
@@ -112,7 +146,7 @@ export async function saveProfile(data) {
   const all = getProfiles();
   const id = data.id || crypto.randomUUID();
   const now = new Date().toISOString();
-  const record = { ...data, id, createdAt: data.createdAt || now, updatedAt: now };
+  const record = sanitizeProfile({ ...data, id, createdAt: data.createdAt || now, updatedAt: now });
   const idx = all.findIndex((p) => p.id === id);
   if (idx >= 0) all[idx] = record; else all.push(record);
   _cache = [...all];
@@ -121,7 +155,7 @@ export async function saveProfile(data) {
 
   if (!supabase) return record;
   try {
-    await withTimeout(supabase.from("profiles").upsert([toDb(record)]));
+    await withTimeout(supabase.from("profiles").upsert([toRemoteProfile(record)]));
   } catch (err) {
     console.error("[saveProfile] Supabase failed:", err.message);
   }
@@ -141,12 +175,9 @@ export async function deleteProfile(id) {
   }
 }
 
-export function authenticate(username, password) {
-  return getProfiles().find(
-    (p) =>
-      p.username.trim().toLowerCase() === username.trim().toLowerCase() &&
-      p.password === password
-  ) || null;
+export function authenticate() {
+  console.warn("[profiles] authenticate() legacy désactivé : utilisez Supabase Auth.");
+  return null;
 }
 
 export function setSession(profile) {

@@ -1027,14 +1027,13 @@ function ArticleRow({ article, onEdit, onDelete, onToggleFeatured }) {
 
 /* ── Profils & Accès ────────────────────────────────────── */
 
-const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "", password: "" };
+const EMPTY_PROFILE = { id: null, name: "", role: "custom", username: "" };
 
 function ProfilesSection() {
   const session = getSession() || getMemberSession();
   const [profiles, setProfiles] = useState(() => getProfiles());
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [editing, setEditing] = useState(false);
-  const [showPass, setShowPass] = useState(false);
 
   useEffect(() => {
     const refresh = () => setProfiles(getProfiles());
@@ -1055,7 +1054,7 @@ function ProfilesSection() {
   };
 
   const handleSave = () => {
-    if (!form.username.trim() || !form.name.trim() || !form.password.trim()) return;
+    if (!form.username.trim() || !form.name.trim()) return;
     const conflict = profiles.find(
       (p) => p.username.toLowerCase() === form.username.toLowerCase() && p.id !== form.id
     );
@@ -1081,10 +1080,10 @@ function ProfilesSection() {
         <div>
           <h2 className="prof-heading">Profils &amp; Accès</h2>
           <p className="prof-desc">
-            Gérez les comptes ayant accès au tableau de bord. Chaque profil possède son propre identifiant et mot de passe.
+            Gérez les profils applicatifs ayant accès au tableau de bord. Les mots de passe sont gérés par Supabase Auth.
             {session && <span className="prof-session"> Connecté en tant que <strong>{session.name}</strong>.</span>}
           </p>
-          <p className="prof-note">⚠ Les identifiants sont stockés localement sur cet appareil.</p>
+          <p className="prof-note">⚠ Aucun mot de passe n'est stocké dans les profils.</p>
         </div>
         {!editing && (
           <button className="prof-new-btn" onClick={handleNew}>
@@ -1124,27 +1123,6 @@ function ProfilesSection() {
                 onChange={(e) => setF("username", e.target.value)}
                 autoComplete="off"
               />
-            </div>
-            <div className="prof-form-field">
-              <label className="prof-label">Mot de passe</label>
-              <div className="prof-pass-wrap">
-                <input
-                  className="db-input prof-pass-input"
-                  type={showPass ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={(e) => setF("password", e.target.value)}
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  className="prof-pass-toggle"
-                  onClick={() => setShowPass((v) => !v)}
-                  title={showPass ? "Masquer" : "Afficher"}
-                >
-                  {showPass ? "🙈" : "👁"}
-                </button>
-              </div>
             </div>
           </div>
           <div className="prof-form-actions">

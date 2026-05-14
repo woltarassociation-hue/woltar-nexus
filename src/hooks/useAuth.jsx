@@ -2,18 +2,18 @@
 import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "../lib/db.js";
 import {
+  getProfileByUsername,
   getUserProfile,
   onAuthStateChange,
   isAdmin as checkAdmin,
   hasPermission as checkPerm,
   getMemberSession,
 } from "../lib/auth.js";
-import { getMemberByAuthIdRemote } from "../lib/members.js";
 
 const AuthContext = createContext(null);
 
 function profileFromMemberSession(ms) {
-  return { id: ms.id, authId: ms.authId, role: ms.role, username: ms.pseudo, authType: ms.authType };
+  return { id: ms.id, authId: ms.authId, role: ms.role, username: ms.username || ms.pseudo, authType: ms.authType };
 }
 
 function userFromMemberSession(ms) {
@@ -26,17 +26,19 @@ function isSupabaseMemberSession(ms) {
 
 async function resolveProfile(user) {
   if (!user?.id) return null;
-  const member = await getMemberByAuthIdRemote(user.id);
-  if (member) {
-    return {
-      id: member.id,
-      authId: user.id,
-      role: member.role || "membre",
-      username: member.pseudo,
-      authType: "supabase",
-    };
-  }
-  return getUserProfile(user.id);
+  const username =
+    user.user_metadata?.username ||
+    user.email?.replace(/@woltar\.nexus$/i, "");
+  const profileByUsername = username ? await getProfileByUsername(username) : null;
+  const profile = profileByUsername || await getUserProfile(user.id);
+  if (!profile) return null;
+  return {
+    id: profile.id,
+    authId: user.id,
+    role: profile.role || "membre",
+    username: profile.username || profile.display_name || username,
+    authType: "supabase",
+  };
 }
 
 export function AuthProvider({ children }) {
