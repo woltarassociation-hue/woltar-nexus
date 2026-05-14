@@ -15,7 +15,7 @@ import { getTickets, deleteTicket, updateTicketStatus, getDiscordConfig, saveDis
 import RichTextEditor from "./RichTextEditor";
 import ParametresSection  from "./admin/ParametresSection";
 import CategoriesSection  from "./admin/CategoriesSection";
-import RolesSection       from "./admin/RolesSection";
+import BadgesSection      from "./admin/BadgesSection";
 import MediathequeSection from "./admin/MediathequeSection";
 import PollsSection       from "./admin/PollsSection";
 import PopupsSection      from "./admin/PopupsSection";
@@ -191,7 +191,7 @@ function ProfilsHub({ setView }) {
   const CARDS = [
     { icon: "👥", label: "Profils & Accès",     sub: "Comptes du tableau de bord", view: "profils" },
     { icon: "🧑‍🤝‍🧑", label: "Membres inscrits",  sub: "Comptes de la communauté",   view: "membres" },
-    { icon: "🔐", label: "Rôles & Permissions", sub: "Droits et niveaux d'accès",   view: "roles" },
+    { icon: "🏅", label: "Badges",               sub: "Attributs visuels et distinctions", view: "badges" },
   ];
   return (
     <div className="rpx-panel">
@@ -473,7 +473,7 @@ export default function AssociationDashboard() {
       {section === "profils" && profilsView === "hub" && canManageUsers     && <ProfilsHub setView={setProfilsView} />}
       {section === "profils" && profilsView === "profils" && canManageUsers && <ProfilesSection />}
       {section === "profils" && profilsView === "membres" && canManageUsers && <MembresSection />}
-      {section === "profils" && profilsView === "roles" && canManageUsers   && <RolesSection />}
+      {section === "profils" && profilsView === "badges" && canManageUsers  && <BadgesSection />}
 
       {/* ── Sections directes ── */}
       {section === "tickets" && canManageUsers     && <TicketsManager />}
