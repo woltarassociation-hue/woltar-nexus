@@ -27,7 +27,7 @@ export default function SetupPage() {
       id:          user?.id || crypto.randomUUID(),
       name:        name.trim() || "Administrateur",
       displayName: name.trim() || "Administrateur",
-      role:        "admin",
+      role:        "administrateur",
       username:    username.trim(),
     });
     await signInFromMembers(username.trim(), password);

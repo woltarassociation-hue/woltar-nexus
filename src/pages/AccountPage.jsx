@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { signOut } from "../lib/auth.js";
-import { getMemberByAuthId, upsertMember, MEMBER_ROLE_LABELS } from "../lib/members";
+import { saveProfile } from "../lib/profiles";
+import { getRoleLabel } from "../lib/communityRoles";
 import { compressImage } from "../lib/imageUtils";
 
 export default function AccountPage() {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
   if (loading) {
@@ -37,18 +38,20 @@ export default function AccountPage() {
     );
   }
 
-  return <AccountView user={user} navigate={navigate} />;
+  return <AccountView user={user} profile={profile} navigate={navigate} />;
 }
 
-function AccountView({ user, navigate }) {
-  const member = getMemberByAuthId(user.id);
-  const [avatar, setAvatar]         = useState(member?.avatar || null);
-  const [woltarien1, setWoltarien1] = useState(member?.woltarien1 || "");
-  const [woltarien2, setWoltarien2] = useState(member?.woltarien2 || "");
+function AccountView({ user, profile, navigate }) {
+  const [displayName, setDisplayName] = useState(profile?.displayName || profile?.display_name || profile?.name || profile?.username || "");
+  const [avatar, setAvatar]         = useState(profile?.avatarUrl || profile?.avatar_url || null);
+  const [bio, setBio]               = useState(profile?.bio || "");
+  const [woltarien1, setWoltarien1] = useState(profile?.woltarien1 || "");
+  const [woltarien2, setWoltarien2] = useState(profile?.woltarien2 || "");
+  const [links, setLinks]           = useState(profile?.links || {});
   const [saved, setSaved]           = useState(false);
   const [error, setError]           = useState("");
 
-  const pseudo = member?.pseudo || user.email?.split("@")[0] || "Membre";
+  const pseudo = profile?.username || user.username || user.pseudo || "Membre";
 
   const handleAvatarChange = async (e) => {
     const file = e.target.files?.[0];
@@ -63,15 +66,18 @@ function AccountView({ user, navigate }) {
 
   const handleSave = async () => {
     setError("");
-    if (!woltarien1.trim()) { setError("Indique au moins un personnage woltarien."); return; }
-    await upsertMember({
-      ...(member || {}),
-      id:         member?.id || crypto.randomUUID(),
-      authId:     user.id,
-      pseudo,
-      avatar,
-      woltarien1: woltarien1.trim(),
+    await saveProfile({
+      ...(profile || {}),
+      id:          profile?.id || user.id,
+      authId:      user.id,
+      username:    pseudo,
+      name:        displayName.trim() || pseudo,
+      displayName: displayName.trim() || pseudo,
+      avatarUrl:   avatar,
+      bio:         bio.trim(),
+      woltarien1:  woltarien1.trim(),
       woltarien2: woltarien2.trim() || null,
+      links,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -113,10 +119,21 @@ function AccountView({ user, navigate }) {
 
         <div className="account-pseudo">{pseudo}</div>
         <div className="account-role">
-          {MEMBER_ROLE_LABELS[member?.role] || "Membre"}
+          {getRoleLabel(profile?.role)}
         </div>
 
         <div className="setup-form account-form">
+          <div className="setup-field">
+            <label className="setup-label">Pseudo affiché</label>
+            <input
+              className="setup-input"
+              type="text"
+              value={displayName}
+              onChange={(e) => { setDisplayName(e.target.value); setError(""); setSaved(false); }}
+              placeholder="Nom affiché sur Woltar Nexus"
+            />
+          </div>
+
           <div className="setup-field">
             <label className="setup-label">Woltarien(ne) principal(e)</label>
             <input
@@ -125,6 +142,28 @@ function AccountView({ user, navigate }) {
               value={woltarien1}
               onChange={(e) => { setWoltarien1(e.target.value); setError(""); setSaved(false); }}
               placeholder="Prénom et NOM du personnage"
+            />
+          </div>
+
+          <div className="setup-field">
+            <label className="setup-label">Bio</label>
+            <textarea
+              className="setup-input"
+              value={bio}
+              onChange={(e) => { setBio(e.target.value); setSaved(false); }}
+              placeholder="Quelques mots sur toi, ton RP, tes créations..."
+              rows={4}
+            />
+          </div>
+
+          <div className="setup-field">
+            <label className="setup-label">Lien / réseau</label>
+            <input
+              className="setup-input"
+              type="url"
+              value={links.website || ""}
+              onChange={(e) => { setLinks((prev) => ({ ...prev, website: e.target.value })); setSaved(false); }}
+              placeholder="https://..."
             />
           </div>
 

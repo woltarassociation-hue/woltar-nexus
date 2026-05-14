@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../hooks/useAuth.jsx";
 import { saveArticle, uploadCoverImage, supabaseConfigured } from "../lib/supabase";
 import { getAffiche, saveAffiche, clearAffiche } from "../lib/affiche";
 import { getAllArticles, deleteArticle, toggleFeatured, getFontStack } from "../lib/articles";
@@ -19,6 +20,7 @@ import MediathequeSection from "./admin/MediathequeSection";
 import PollsSection       from "./admin/PollsSection";
 import PopupsSection      from "./admin/PopupsSection";
 import StatsSection       from "./admin/StatsSection";
+import { ROLE_COLORS, canAccessStudio, getAllowedArticleCategories } from "../lib/communityRoles.js";
 
 const stripHtml = (html) =>
   (html || "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
@@ -146,7 +148,7 @@ const EMPTY_FORM = {
 
 /* ── Studio Hub ─────────────────────────────────────────── */
 
-function StudioHub({ setView, drafts }) {
+function StudioHub({ setView, drafts, allowedCategories, canAdmin }) {
   const all       = getAllArticles();
   const published = all.filter((a) => a.status === "published").length;
   const CARDS = [
@@ -158,7 +160,11 @@ function StudioHub({ setView, drafts }) {
     { icon: "📝",  label: "Formulaires RP",     sub: "Formulaires & réponses",     view: "formulaires" },
     { icon: "📊",  label: "Sondages",           sub: "Votes & statistiques",       view: "sondages" },
     { icon: "🗂",  label: "Catégories",         sub: "Organisation du contenu",    view: "categories" },
-  ];
+  ].filter((card) => {
+    if (card.view === "affiche") return canAdmin;
+    if (["candidatures", "formulaires", "sondages", "categories"].includes(card.view)) return canAdmin;
+    return allowedCategories === null || allowedCategories.length > 0;
+  });
   return (
     <div className="rpx-panel">
       <div className="rpx-panel-header">
@@ -211,6 +217,7 @@ function ProfilsHub({ setView }) {
 
 export default function AssociationDashboard() {
   const navigate = useNavigate();
+  const { profile, isAdmin, hasPermission } = useAuth();
   const [section, setSection]         = useState("studio");
   const [studioView, setStudioView]   = useState("hub");
   const [profilsView, setProfilsView] = useState("hub");
@@ -224,13 +231,18 @@ export default function AssociationDashboard() {
   );
   const fileRef = useRef(null);
 
-  // Guard: Vérifier que c'est un admin (supporte l'ancienne session ET la session members)
+  const allowedCategories = useMemo(() => getAllowedArticleCategories(profile?.role), [profile?.role]);
+  const studioEnabled = canAccessStudio(profile?.role);
+  const canUseAdminTools = isAdmin || profile?.role === "dev" || profile?.role === "interim";
+  const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
+
+  // Guard: vérifier que l'utilisateur a bien un accès dashboard/studio.
   useEffect(() => {
     const session = getSession() || getMemberSession();
-    if (!session || (session.role !== "admin" && session.role !== "super_admin")) {
+    if (!session && !hasPermission("access_dashboard")) {
       navigate("/");
     }
-  }, [navigate]);
+  }, [hasPermission, navigate]);
 
   useEffect(() => {
     const refresh = () =>
@@ -238,8 +250,6 @@ export default function AssociationDashboard() {
     window.addEventListener("woltar:articles", refresh);
     return () => window.removeEventListener("woltar:articles", refresh);
   }, []);
-
-  const set = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
   const applyImage = (file) => {
     if (!file || !file.type.startsWith("image/")) return;
@@ -286,6 +296,10 @@ export default function AssociationDashboard() {
   };
 
   const handleSave = async (status) => {
+    if (allowedCategories && !allowedCategories.includes(form.category)) {
+      setFeedback({ type: "error", message: "Votre rôle ne permet pas de publier dans cette catégorie." });
+      return;
+    }
     setSaving(true);
     setFeedback(null);
     try {
@@ -374,30 +388,38 @@ export default function AssociationDashboard() {
           </span>
         </div>
         <div className="db-header-nav">
-          <button
-            className={`db-nav-btn${section === "studio" ? " db-nav-btn--active" : ""}`}
-            onClick={() => { setSection("studio"); setStudioView("hub"); }}
-          >
-            ✏ Studio
-          </button>
-          <button
-            className={`db-nav-btn${section === "profils" ? " db-nav-btn--active" : ""}`}
-            onClick={() => { setSection("profils"); setProfilsView("hub"); }}
-          >
-            👥 Profils & Accès
-          </button>
-          <button
-            className={`db-nav-btn${section === "tickets" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("tickets")}
-          >
-            🎫 Tickets
-          </button>
-          <button
-            className={`db-nav-btn${section === "mediatheque" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("mediatheque")}
-          >
-            🖼 Médiathèque
-          </button>
+          {studioEnabled && (
+            <button
+              className={`db-nav-btn${section === "studio" ? " db-nav-btn--active" : ""}`}
+              onClick={() => { setSection("studio"); setStudioView("hub"); }}
+            >
+              ✏ Studio
+            </button>
+          )}
+          {canUseAdminTools && (
+            <button
+              className={`db-nav-btn${section === "profils" ? " db-nav-btn--active" : ""}`}
+              onClick={() => { setSection("profils"); setProfilsView("hub"); }}
+            >
+              👥 Profils & Accès
+            </button>
+          )}
+          {canUseAdminTools && (
+            <button
+              className={`db-nav-btn${section === "tickets" ? " db-nav-btn--active" : ""}`}
+              onClick={() => setSection("tickets")}
+            >
+              🎫 Tickets
+            </button>
+          )}
+          {(canUseAdminTools || profile?.role === "communication") && (
+            <button
+              className={`db-nav-btn${section === "mediatheque" ? " db-nav-btn--active" : ""}`}
+              onClick={() => setSection("mediatheque")}
+            >
+              🖼 Médiathèque
+            </button>
+          )}
           <button
             className="db-nav-btn db-nav-btn--disabled"
             disabled
@@ -405,19 +427,23 @@ export default function AssociationDashboard() {
           >
             📢 Annonces
           </button>
-          <button
-            className={`db-nav-btn${section === "stats" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("stats")}
-          >
-            📈 Statistiques
-          </button>
-          <div className="db-nav-sep" />
-          <button
-            className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
-            onClick={() => setSection("parametres")}
-          >
-            ⚙ Paramètres
-          </button>
+          {canUseAdminTools && (
+            <button
+              className={`db-nav-btn${section === "stats" ? " db-nav-btn--active" : ""}`}
+              onClick={() => setSection("stats")}
+            >
+              📈 Statistiques
+            </button>
+          )}
+          {canUseAdminTools && <div className="db-nav-sep" />}
+          {canUseAdminTools && (
+            <button
+              className={`db-nav-btn${section === "parametres" ? " db-nav-btn--active" : ""}`}
+              onClick={() => setSection("parametres")}
+            >
+              ⚙ Paramètres
+            </button>
+          )}
         </div>
         <button
           className="db-logout-btn"
@@ -441,32 +467,32 @@ export default function AssociationDashboard() {
       )}
 
       {/* ── Studio sub-sections ── */}
-      {section === "studio" && studioView === "hub"                                    && <StudioHub setView={setStudioView} drafts={drafts} />}
+      {section === "studio" && studioView === "hub"                                    && <StudioHub setView={setStudioView} drafts={drafts} allowedCategories={allowedCategories} canAdmin={canUseAdminTools} />}
       {section === "studio" && (studioView === "articles" || studioView === "brouillons") && <ArticlesManager onEdit={handleEditArticle} />}
-      {section === "studio" && studioView === "candidatures"                            && <RPDashboard />}
-      {section === "studio" && studioView === "affiche"                                 && <AfficheSection />}
-      {section === "studio" && studioView === "formulaires"                             && <FormulairesManager />}
-      {section === "studio" && studioView === "sondages"                                && <PollsSection />}
-      {section === "studio" && studioView === "categories"                              && <CategoriesSection />}
+      {section === "studio" && studioView === "candidatures" && canUseAdminTools        && <RPDashboard />}
+      {section === "studio" && studioView === "affiche" && canUseAdminTools             && <AfficheSection />}
+      {section === "studio" && studioView === "formulaires" && canUseAdminTools         && <FormulairesManager />}
+      {section === "studio" && studioView === "sondages" && canUseAdminTools            && <PollsSection />}
+      {section === "studio" && studioView === "categories" && canUseAdminTools          && <CategoriesSection />}
 
       {/* ── Profils & Accès sub-sections ── */}
-      {section === "profils" && profilsView === "hub"     && <ProfilsHub setView={setProfilsView} />}
-      {section === "profils" && profilsView === "profils" && <ProfilesSection />}
-      {section === "profils" && profilsView === "membres" && <MembresSection />}
-      {section === "profils" && profilsView === "roles"   && <RolesSection />}
+      {section === "profils" && profilsView === "hub" && canUseAdminTools     && <ProfilsHub setView={setProfilsView} />}
+      {section === "profils" && profilsView === "profils" && canUseAdminTools && <ProfilesSection />}
+      {section === "profils" && profilsView === "membres" && canUseAdminTools && <MembresSection />}
+      {section === "profils" && profilsView === "roles" && canUseAdminTools   && <RolesSection />}
 
       {/* ── Sections directes ── */}
-      {section === "tickets"     && <TicketsManager />}
-      {section === "mediatheque" && <MediathequeSection />}
-      {section === "annonces"    && <PopupsSection />}
-      {section === "stats"       && <StatsSection />}
-      {section === "parametres"  && <ParametresSection />}
+      {section === "tickets" && canUseAdminTools         && <TicketsManager />}
+      {section === "mediatheque" && (canUseAdminTools || profile?.role === "communication") && <MediathequeSection />}
+      {section === "annonces" && canUseAdminTools        && <PopupsSection />}
+      {section === "stats" && canUseAdminTools           && <StatsSection />}
+      {section === "parametres" && canUseAdminTools      && <ParametresSection />}
 
       <div className="db-body" style={{ display: section === "studio" && studioView === "editeur" ? undefined : "none" }}>
         {/* ── Sidebar ── */}
         <aside className="db-sidebar">
           <p className="db-sidebar-label">Sélectionner une catégorie</p>
-          {CATEGORIES.map((cat) => (
+          {CATEGORIES.filter((cat) => !allowedCategories || allowedCategories.includes(cat.id)).map((cat) => (
             <button
               key={cat.id}
               className={`db-cat-btn${form.category === cat.id ? " db-cat-btn--active" : ""}`}
@@ -1072,7 +1098,7 @@ function ProfilesSection() {
 
   const handleCancel = () => { setEditing(false); setForm(EMPTY_PROFILE); };
 
-  const roleColor = { admin: "#8b0000", artiste: "#1fa8dc", communication: "#1a7a3c", custom: "#7a4fa0" };
+  const roleColor = ROLE_COLORS;
 
   return (
     <div className="prof-section">

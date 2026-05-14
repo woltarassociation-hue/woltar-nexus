@@ -6,10 +6,11 @@ import { useAuth } from "../hooks/useAuth.jsx";
  * - Non connecté → redirige vers /login (avec la page d'origine mémorisée)
  * - Connecté sans le rôle requis → redirige vers /
  *
- * requireAdmin : exige le rôle admin ou super_admin
+ * requireAdmin : exige un rôle administrateur complet
+ * requirePermission : exige une permission communautaire
  */
-export default function ProtectedRoute({ children, requireAdmin = false }) {
-  const { user, profile, loading } = useAuth();
+export default function ProtectedRoute({ children, requireAdmin = false, requirePermission = null }) {
+  const { user, loading, hasPermission, isAdmin } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -24,7 +25,11 @@ export default function ProtectedRoute({ children, requireAdmin = false }) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && profile?.role !== "admin" && profile?.role !== "super_admin") {
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (requirePermission && !hasPermission(requirePermission)) {
     return <Navigate to="/" replace />;
   }
 

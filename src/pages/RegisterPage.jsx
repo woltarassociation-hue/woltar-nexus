@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { registerWithUsername } from "../lib/auth.js";
+import { registerWithUsername, signInFromMembers } from "../lib/auth.js";
 import { getProfiles, saveProfile } from "../lib/profiles";
 
 export default function RegisterPage() {
@@ -39,10 +39,17 @@ export default function RegisterPage() {
       name:        pseudo.trim(),
       username:    pseudo.trim(),
       displayName: pseudo.trim(),
-      role:        "membre",
+      role:        "visiteur",
+      woltarien1:  woltarien1.trim(),
+      woltarien2:  woltarien2.trim() || null,
     });
 
+    const { error: loginErr } = await signInFromMembers(pseudo.trim(), password);
     setLoading(false);
+    if (loginErr) {
+      setError("Compte créé. Connecte-toi avec ton pseudo et ton mot de passe pour accéder à ton compte.");
+      return;
+    }
     setDone(true);
   };
 

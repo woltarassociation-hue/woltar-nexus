@@ -62,8 +62,9 @@ function AuthLink({ isAdmin, user, onClick }) {
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, hasPermission } = useAuth();
   const close = () => setOpen(false);
+  const showStudio = !isAdmin && hasPermission("access_dashboard");
 
   return (
     <header className="navbar">
@@ -104,7 +105,14 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
-        <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
+        {showStudio ? (
+          <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
+            <span className="nav-symbol">✎</span>
+            <span>Studio</span>
+          </Link>
+        ) : (
+          <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
+        )}
       </nav>
 
       {/* Hamburger — mobile uniquement */}
@@ -128,7 +136,14 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
-          <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
+          {showStudio ? (
+            <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={close}>
+              <span className="nav-symbol">✎</span>
+              <span>Studio</span>
+            </Link>
+          ) : (
+            <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
+          )}
         </div>
       )}
     </header>

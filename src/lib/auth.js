@@ -1,9 +1,11 @@
 import { supabase, withTimeout } from "./db.js";
 import { getProfiles } from "./profiles.js";
+import { DEFAULT_ROLE, hasRolePermission, isAdminRole, normalizeRole } from "./communityRoles.js";
 
 // ── Session locale (table members) ────────────────────────────────────────────
 
 const SESSION_KEY = "woltar_member_session";
+const TECHNICAL_EMAIL_DOMAIN = import.meta.env.VITE_AUTH_EMAIL_DOMAIN?.trim() || "woltar.net";
 
 export function getMemberSession() {
   try { return JSON.parse(localStorage.getItem(SESSION_KEY)) ?? null; }
@@ -31,7 +33,7 @@ function profileToSession(profile, authUser, fallbackUsername) {
     authId:   authUser.id,
     pseudo:   username,
     username,
-    role:     profile?.role || "membre",
+    role:     normalizeRole(profile?.role),
     authType: "supabase",
   };
 }
@@ -60,17 +62,25 @@ export async function signInFromMembers(username, password) {
   const pseudo = normalizeUsername(username);
 
   let authData;
-  try {
-    const { data, error } = await withTimeout(
-      supabase.auth.signInWithPassword({
-        email: pseudoToEmail(pseudo),
-        password,
-      })
-    );
-    if (error) throw error;
-    authData = data;
-  } catch (e) {
-    console.log("[Auth] Erreur connexion Supabase:", e.message);
+  let lastError;
+  for (const email of getSignInEmails(pseudo)) {
+    try {
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+      );
+      if (error) throw error;
+      authData = data;
+      break;
+    } catch (e) {
+      lastError = e;
+    }
+  }
+
+  if (!authData) {
+    console.log("[Auth] Erreur connexion Supabase:", lastError?.message);
     return { user: null, error: "Pseudo ou mot de passe incorrect." };
   }
 
@@ -100,8 +110,32 @@ export async function signOut() {
 
 // ── Supabase Auth (inscription, connexion via Auth) ────────────────────────────
 
+function pseudoToEmailLocalPart(pseudo) {
+  const safePseudo = normalizeUsername(pseudo)
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return safePseudo || "user";
+}
+
 function pseudoToEmail(pseudo) {
+  return `${pseudoToEmailLocalPart(pseudo)}@${TECHNICAL_EMAIL_DOMAIN}`;
+}
+
+function pseudoToLegacyEmail(pseudo) {
+  return `${pseudoToEmailLocalPart(pseudo)}@woltar.nexus`;
+}
+
+function pseudoToOldLegacyEmail(pseudo) {
   return `${normalizeUsername(pseudo).toLowerCase().replace(/[^a-z0-9._-]/g, "_")}@woltar.nexus`;
+}
+
+function getSignInEmails(pseudo) {
+  return [...new Set([pseudoToEmail(pseudo), pseudoToLegacyEmail(pseudo), pseudoToOldLegacyEmail(pseudo)])];
 }
 
 export async function registerWithUsername(username, password) {
@@ -115,7 +149,12 @@ export async function registerWithUsername(username, password) {
     password,
     options: { data: { username: clean, display_name: clean } },
   });
-  if (error) return { user: null, error: error.message };
+  if (error) {
+    const message = /email rate limit/i.test(error.message)
+      ? "Inscription temporairement bloquée par Supabase Auth. Désactivez la confirmation email dans Supabase Auth pour les emails techniques."
+      : error.message;
+    return { user: null, error: message };
+  }
   return { user: data.user, error: null };
 }
 
@@ -138,34 +177,13 @@ export async function getUserProfile(userId) {
 
 // ── Rôles et permissions ───────────────────────────────────────────────────────
 
-const ROLE_PERMISSIONS = {
-  super_admin:  ["*"],
-  admin:        ["*"],
-  charge_com:   [
-    "create_article", "edit_article", "publish_article", "manage_events", "manage_media",
-    "manage_polls", "vote_poll", "validate_poll", "create_popup", "manage_popups", "view_stats",
-  ],
-  animateur_rp: [
-    "create_article", "edit_article", "manage_events", "create_form", "view_responses",
-    "manage_polls", "vote_poll", "view_stats",
-  ],
-  moderateur:   [
-    "edit_article", "manage_tickets", "view_responses",
-    "vote_poll", "manage_members", "view_stats",
-  ],
-  redacteur:    ["create_article", "manage_drafts", "vote_poll"],
-  membre:       ["vote_poll"],
-  lecteur:      ["vote_poll"],
-};
-
 export function hasPermission(profile, permission) {
   if (!profile) return false;
-  const allowed = ROLE_PERMISSIONS[profile.role] ?? [];
-  return allowed.includes("*") || allowed.includes(permission);
+  return hasRolePermission(profile.role || DEFAULT_ROLE, permission);
 }
 
 export function isAdmin(profile) {
-  return profile?.role === "admin" || profile?.role === "super_admin";
+  return isAdminRole(profile?.role);
 }
 
 // ── Écoute des changements d'état auth ────────────────────────────────────────

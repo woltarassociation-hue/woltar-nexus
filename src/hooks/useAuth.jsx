@@ -9,11 +9,12 @@ import {
   hasPermission as checkPerm,
   getMemberSession,
 } from "../lib/auth.js";
+import { DEFAULT_ROLE, normalizeRole } from "../lib/communityRoles.js";
 
 const AuthContext = createContext(null);
 
 function profileFromMemberSession(ms) {
-  return { id: ms.id, authId: ms.authId, role: ms.role, username: ms.username || ms.pseudo, authType: ms.authType };
+  return { id: ms.id, authId: ms.authId, role: normalizeRole(ms.role), username: ms.username || ms.pseudo, authType: ms.authType };
 }
 
 function userFromMemberSession(ms) {
@@ -28,14 +29,14 @@ async function resolveProfile(user) {
   if (!user?.id) return null;
   const username =
     user.user_metadata?.username ||
-    user.email?.replace(/@woltar\.nexus$/i, "");
+    user.email?.replace(/@(?:woltar\.nexus|woltar\.net)$/i, "");
   const profileByUsername = username ? await getProfileByUsername(username) : null;
   const profile = profileByUsername || await getUserProfile(user.id);
   if (!profile) return null;
   return {
     id: profile.id,
     authId: user.id,
-    role: profile.role || "membre",
+    role: normalizeRole(profile.role || DEFAULT_ROLE),
     username: profile.username || profile.display_name || username,
     authType: "supabase",
   };

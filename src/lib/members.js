@@ -1,4 +1,5 @@
 import { supabase, withTimeout, toDb, fromDb } from "./db.js";
+import { ROLE_LABELS } from "./communityRoles.js";
 
 const KEY = "woltar_members";
 
@@ -113,9 +114,4 @@ export function pseudoExists(pseudo, excludeId = null) {
   );
 }
 
-export const MEMBER_ROLE_LABELS = {
-  membre:     "Membre",
-  moderateur: "Modérateur",
-  artiste:    "Artiste",
-  conteur:    "Conteur",
-};
+export const MEMBER_ROLE_LABELS = ROLE_LABELS;

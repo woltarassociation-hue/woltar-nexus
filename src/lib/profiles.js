@@ -1,26 +1,15 @@
 import { supabase, withTimeout, fromDb } from "./db.js";
+import { DEFAULT_ROLE, ROLE_LABELS, normalizeRole } from "./communityRoles.js";
 
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";
 
 let _cache = null;
 
-export const ROLE_LABELS = {
-  super_admin: "Super Admin",
-  admin: "Administrateur",
-  membre: "Membre",
-  charge_com: "Chargé communication",
-  animateur_rp: "Animateur RP",
-  moderateur: "Modérateur",
-  redacteur: "Rédacteur",
-  lecteur: "Lecteur",
-  artiste: "Artistes",
-  communication: "Communication",
-  custom: "Personnalisé",
-};
+export { ROLE_LABELS };
 
 const DEFAULT_PROFILES = [
-  { id: "default-admin",  name: "Administrateur", role: "admin",         username: "association" },
+  { id: "default-admin",  name: "Administrateur", role: "administrateur", username: "association" },
   { id: "default-artiste", name: "Artistes",       role: "artiste",       username: "artiste" },
   { id: "default-comm",   name: "Communication",   role: "communication", username: "communication" },
 ];
@@ -29,6 +18,7 @@ function sanitizeProfile(profile) {
   const safe = { ...profile };
   delete safe.password;
   delete safe.password_hash;
+  safe.role = normalizeRole(safe.role || DEFAULT_ROLE);
   safe.name = safe.name || safe.displayName || safe.display_name || safe.username || "";
   return safe;
 }
@@ -42,7 +32,14 @@ function toRemoteProfile(profile) {
   return {
     id: safe.id,
     username: safe.username,
+    name: safe.name || safe.username,
+    display_name: safe.displayName || safe.display_name || safe.name || safe.username,
     role: safe.role,
+    avatar_url: safe.avatarUrl || safe.avatar_url || null,
+    bio: safe.bio || "",
+    woltarien1: safe.woltarien1 || "",
+    woltarien2: safe.woltarien2 || null,
+    links: safe.links || {},
     updated_at: safe.updatedAt || new Date().toISOString(),
   };
 }

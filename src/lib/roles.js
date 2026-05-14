@@ -1,19 +1,18 @@
 import { supabase, withTimeout } from "./db.js";
+import { COMMUNITY_ROLES } from "./communityRoles.js";
 
 let _roles = null;
 let _permissions = null;
 let _rolePermissions = null;
 let _userRoles = null;
 
-export const DEFAULT_ROLES = [
-  { id: "r-super",   name: "super_admin",  label: "Super Admin",          color: "#ff4444", level: 100 },
-  { id: "r-admin",   name: "admin",        label: "Admin",                color: "#8b0000", level: 90  },
-  { id: "r-com",     name: "charge_com",   label: "Chargé communication", color: "#1fa8dc", level: 70  },
-  { id: "r-rp",      name: "animateur_rp", label: "Animateur RP",         color: "#a865d8", level: 60  },
-  { id: "r-modo",    name: "moderateur",   label: "Modérateur",           color: "#e8912a", level: 50  },
-  { id: "r-redac",   name: "redacteur",    label: "Rédacteur",            color: "#2ecc71", level: 40  },
-  { id: "r-lecteur", name: "lecteur",      label: "Lecteur",              color: "#95a5a6", level: 10  },
-];
+export const DEFAULT_ROLES = Object.entries(COMMUNITY_ROLES).map(([name, role]) => ({
+  id: `r-${name}`,
+  name,
+  label: role.label,
+  color: role.color,
+  level: role.level,
+}));
 
 export const DEFAULT_PERMISSIONS = [
   { id: "p-ca",  key: "create_article",    label: "Créer un article",       groupName: "Articles"    },
@@ -31,6 +30,12 @@ export const DEFAULT_PERMISSIONS = [
   { id: "p-mu",  key: "manage_users",      label: "Gérer les utilisateurs", groupName: "Admin"       },
   { id: "p-ms",  key: "manage_settings",   label: "Gérer les paramètres",  groupName: "Admin"       },
   { id: "p-mm",  key: "manage_media",      label: "Gérer la médiathèque",  groupName: "Média"       },
+  { id: "p-vp",  key: "view_profile",      label: "Voir son profil",       groupName: "Profil"      },
+  { id: "p-ep",  key: "edit_profile",      label: "Modifier son profil",   groupName: "Profil"      },
+  { id: "p-ad",  key: "access_dashboard",  label: "Accéder au dashboard",  groupName: "Accès"       },
+  { id: "p-as",  key: "access_studio",     label: "Accéder au Studio",     groupName: "Accès"       },
+  { id: "p-cfa", key: "create_fanarts",    label: "Publier fan-arts",      groupName: "Studio"      },
+  { id: "p-cac", key: "create_actualites", label: "Publier actualités",    groupName: "Studio"      },
 ];
 
 function dispatch() { window.dispatchEvent(new Event("woltar:roles")); }

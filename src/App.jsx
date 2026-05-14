@@ -116,7 +116,7 @@ export default function App() {
         <Route
           path="/association/dashboard"
           element={
-            <ProtectedRoute requireAdmin>
+            <ProtectedRoute requirePermission="access_dashboard">
               <AssociationDashboard />
             </ProtectedRoute>
           }
