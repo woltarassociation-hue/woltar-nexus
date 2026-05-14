@@ -1,5 +1,5 @@
 import { supabase, withTimeout, fromDb } from "./db.js";
-import { DEFAULT_ROLE, ROLE_LABELS, normalizeRole } from "./communityRoles.js";
+import { DEFAULT_ROLE, ROLE_LABELS, normalizeRole } from "./profileLevels.js";
 
 const KEY = "woltar_profiles";
 const SESSION_KEY = "woltar_session";

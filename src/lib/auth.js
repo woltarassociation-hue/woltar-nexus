@@ -1,6 +1,6 @@
 import { supabase, withTimeout } from "./db.js";
 import { getProfiles } from "./profiles.js";
-import { DEFAULT_ROLE, hasRolePermission, isAdminRole, normalizeRole } from "./communityRoles.js";
+import { DEFAULT_ROLE, hasRolePermission, isAdminRole, normalizeRole } from "./profileLevels.js";
 
 // ── Session locale (table members) ────────────────────────────────────────────
 
@@ -34,6 +34,7 @@ function profileToSession(profile, authUser, fallbackUsername) {
     pseudo:   username,
     username,
     role:     normalizeRole(profile?.role),
+    locked:   profile?.locked ?? false,
     authType: "supabase",
   };
 }

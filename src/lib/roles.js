@@ -1,5 +1,5 @@
 import { supabase, withTimeout } from "./db.js";
-import { COMMUNITY_ROLES } from "./communityRoles.js";
+import { PROFILE_LEVELS as COMMUNITY_ROLES } from "./profileLevels.js";
 
 let _roles = null;
 let _permissions = null;

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth.jsx";
 import { signOut } from "../lib/auth.js";
 import { saveProfile } from "../lib/profiles";
-import { getRoleLabel } from "../lib/communityRoles";
+import { getRoleLabel } from "../lib/profileLevels";
 import { compressImage } from "../lib/imageUtils";
 
 export default function AccountPage() {

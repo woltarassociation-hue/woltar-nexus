@@ -1,5 +1,5 @@
 import { supabase, withTimeout, toDb, fromDb } from "./db.js";
-import { ROLE_LABELS } from "./communityRoles.js";
+import { ROLE_LABELS } from "./profileLevels.js";
 
 const KEY = "woltar_members";
 
