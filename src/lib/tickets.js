@@ -97,13 +97,19 @@ export async function updateTicketStatus(id, status) {
   }
 }
 
-// Config Discord — stockée localement uniquement (secret d'admin)
+// Config Discord — le webhook reste exclusivement côté serveur
 export function getDiscordConfig() {
-  try { return JSON.parse(localStorage.getItem("woltar_discord_config") || "{}"); } catch { return {}; }
+  try {
+    const safeConfig = JSON.parse(localStorage.getItem("woltar_discord_config") || "{}");
+    delete safeConfig.webhookUrl;
+    return safeConfig;
+  } catch { return {}; }
 }
 
 export function saveDiscordConfig(config) {
-  localStorage.setItem("woltar_discord_config", JSON.stringify(config));
+  const safeConfig = { ...(config || {}) };
+  delete safeConfig.webhookUrl;
+  localStorage.setItem("woltar_discord_config", JSON.stringify(safeConfig));
 }
 
 // Envoyer notification Discord via serverless function
@@ -117,7 +123,6 @@ export async function sendDiscordNotification(ticket) {
         ...ticket,
         date: new Date(ticket.createdAt).toLocaleString("fr-FR"),
         enabled: config.enabled !== false,
-        adminWebhookUrl: config.webhookUrl || undefined,
       }),
     });
     return await res.json();

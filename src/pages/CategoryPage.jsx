@@ -79,7 +79,7 @@ export default function CategoryPage() {
       window.removeEventListener("woltar:articles", load);
       window.removeEventListener("storage", load);
     };
-  }, [category]);
+  }, [category, config]);
 
   if (!config) return <Navigate to="/" replace />;
 
@@ -124,7 +124,7 @@ export default function CategoryPage() {
               {featured && (
                 <div className="cat-featured-wrap">
                   <p className="cat-section-label">À la une</p>
-                  <FeaturedCard article={featured} category={category} />
+                  <FeaturedCard article={featured} />
                 </div>
               )}
               {rest.length > 0 && (
@@ -188,7 +188,7 @@ function EmptyState({ config, currentCategory }) {
 
 /* ── Featured article ───────────────────────────────────────── */
 
-function FeaturedCard({ article, category }) {
+function FeaturedCard({ article }) {
   const navigate = useNavigate();
   const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
   const fontStack = getFontStack(article.font);

@@ -9,8 +9,8 @@ import { getMemberSession, signOut as memberSignOut } from "../lib/auth.js";
 import { getAllMembers, upsertMember, deleteMember, MEMBER_ROLE_LABELS } from "../lib/members";
 import { compressImage } from "../lib/imageUtils";
 import { getSubcategories } from "../lib/subcategories";
-import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv, FIELD_TYPES, ALL_RP_STATS, EMPTY_FORM_V2 } from "../lib/forms";
-import { getTickets, saveTicket, deleteTicket, updateTicketStatus, getDiscordConfig, saveDiscordConfig, sendDiscordNotification } from "../lib/tickets";
+import { getForms, saveForm, deleteForm, getResponses, exportResponsesCsv } from "../lib/forms";
+import { getTickets, deleteTicket, updateTicketStatus, getDiscordConfig, saveDiscordConfig, sendDiscordNotification } from "../lib/tickets";
 import RichTextEditor from "./RichTextEditor";
 import ParametresSection  from "./admin/ParametresSection";
 import CategoriesSection  from "./admin/CategoriesSection";
@@ -856,7 +856,6 @@ function ArticlesManager({ onEdit }) {
   const [articles, setArticles] = useState(() => getAllArticles());
   const [activeCat, setActiveCat] = useState("all");
   const [search, setSearch] = useState("");
-  const [deleteId, setDeleteId] = useState(null);
 
   useEffect(() => {
     const refresh = () => setArticles(getAllArticles());
@@ -875,7 +874,6 @@ function ArticlesManager({ onEdit }) {
   const handleDelete = (id) => {
     if (!window.confirm("Supprimer cet article définitivement ?")) return;
     deleteArticle(id);
-    setDeleteId(null);
   };
 
   const handleToggleFeatured = (id) => {
@@ -1037,7 +1035,6 @@ function ProfilesSection() {
   const [form, setForm] = useState(EMPTY_PROFILE);
   const [editing, setEditing] = useState(false);
   const [showPass, setShowPass] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     const refresh = () => setProfiles(getProfiles());
@@ -1045,18 +1042,16 @@ function ProfilesSection() {
     return () => window.removeEventListener("woltar:profiles", refresh);
   }, []);
 
-  const setF = (key, val) => { setForm((f) => ({ ...f, [key]: val })); setSaved(false); };
+  const setF = (key, val) => setForm((f) => ({ ...f, [key]: val }));
 
   const handleEdit = (profile) => {
     setForm({ ...profile });
     setEditing(true);
-    setSaved(false);
   };
 
   const handleNew = () => {
     setForm(EMPTY_PROFILE);
     setEditing(true);
-    setSaved(false);
   };
 
   const handleSave = () => {
@@ -1067,7 +1062,6 @@ function ProfilesSection() {
     if (conflict) { alert("Cet identifiant est déjà utilisé par un autre profil."); return; }
     saveProfile(form);
     setEditing(false);
-    setSaved(true);
     setForm(EMPTY_PROFILE);
   };
 

@@ -1,15 +1,11 @@
 // Fonction Vercel serverless — envoie une notification Discord
-// Le webhook URL est prioritairement en variable d'environnement serveur.
-// Si absent, utilise le webhookUrl passé dans le body (config dashboard admin).
+// Le webhook URL est lu uniquement depuis la variable d'environnement serveur.
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // Priorité 1 : variable d'environnement serveur (sécurisé)
-  // Priorité 2 : webhookUrl passé depuis le dashboard admin (uniquement pour tests admin)
-  const webhookUrl =
-    process.env.DISCORD_TICKET_WEBHOOK_URL || req.body?.adminWebhookUrl || null;
+  const webhookUrl = process.env.DISCORD_TICKET_WEBHOOK_URL || null;
 
   console.log("[Discord] Webhook URL présent:", !!webhookUrl, "Env:", !!process.env.DISCORD_TICKET_WEBHOOK_URL);
 

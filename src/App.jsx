@@ -177,20 +177,6 @@ function MainSite() {
     return () => window.removeEventListener("woltar:affiche", reload);
   }, []);
 
-  if (settings.maintenance_mode) {
-    return (
-      <div className="maintenance-page">
-        <div className="maintenance-inner">
-          <span className="maintenance-icon">🔧</span>
-          <h1 className="maintenance-title">{settings.site_name || "Woltar.net"}</h1>
-          <p className="maintenance-msg">
-            {settings.maintenance_message || "Le site est temporairement en maintenance. Revenez bientôt !"}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const allPublishedArticles = usePublishedArticles(Object.keys(CATEGORY_META));
   const newsSlides = useMemo(() => {
     if (allPublishedArticles.length === 0) return [];
@@ -214,6 +200,20 @@ function MainSite() {
     }, 20000);
     return () => clearInterval(timer);
   }, [newsSlides.length]);
+
+  if (settings.maintenance_mode) {
+    return (
+      <div className="maintenance-page">
+        <div className="maintenance-inner">
+          <span className="maintenance-icon">🔧</span>
+          <h1 className="maintenance-title">{settings.site_name || "Woltar.net"}</h1>
+          <p className="maintenance-msg">
+            {settings.maintenance_message || "Le site est temporairement en maintenance. Revenez bientôt !"}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="site">

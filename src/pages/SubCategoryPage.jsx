@@ -150,7 +150,6 @@ function SubArticleCard({ article }) {
   const navigate = useNavigate();
   const fontStack = getFontStack(article.font);
   const readTime = estimateReadTime(article.content);
-  const meta = CATEGORY_META[article.category] || { label: article.category, icon: "✦" };
 
   return (
     <article
@@ -215,4 +214,3 @@ function FormItemCard({ form }) {
     </div>
   );
 }
-

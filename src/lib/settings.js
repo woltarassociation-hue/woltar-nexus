@@ -68,7 +68,9 @@ export async function saveSetting(key, value) {
   const cur = getSettings();
   cur[key] = value;
   _cache = cur;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(cur)); } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(cur)); } catch {
+    // localStorage may be full or unavailable.
+  }
   dispatch();
 
   if (!supabase) return { ok: false, error: "Supabase non configuré" };
@@ -87,7 +89,9 @@ export async function saveSettings(patch) {
   const cur = getSettings();
   const merged = { ...cur, ...patch };
   _cache = merged;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(merged)); } catch {
+    // localStorage may be full or unavailable.
+  }
   dispatch();
 
   if (!supabase) return { ok: false, error: "Supabase non configuré" };

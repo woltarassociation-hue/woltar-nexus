@@ -7,8 +7,6 @@ import {
   togglePermission,
   assignRole,
   removeRole,
-  getRolePermissionIds,
-  getUserRoleIds,
 } from "../../lib/roles";
 import { getProfiles } from "../../lib/profiles";
 
@@ -17,7 +15,6 @@ export default function RolesSection() {
   const [tab, setTab]               = useState("permissions");
   const [roles, setRoles]           = useState(() => getRoles());
   const [perms, setPerms]           = useState(() => getPermissions());
-  const [rolePerms, setRolePerms]   = useState(() => getRolePermissions());
   const [userRoles, setUserRoles]   = useState(() => getUserRoles());
   const [profiles, setProfiles]     = useState(() => getProfiles());
   const [selectedRole, setSelectedRole] = useState(null);
@@ -27,7 +24,6 @@ export default function RolesSection() {
     const refresh = () => {
       setRoles(getRoles());
       setPerms(getPermissions());
-      setRolePerms(getRolePermissions());
       setUserRoles(getUserRoles());
     };
     const refreshProfiles = () => setProfiles(getProfiles());

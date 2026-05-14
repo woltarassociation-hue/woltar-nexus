@@ -22,7 +22,6 @@ export default function ArticlePage() {
   // vers l'URL d'un article redirige immédiatement (cache vide) alors
   // que Supabase n'a pas encore répondu.
   useEffect(() => {
-    setLoading(true);
     articlesReady.then(() => {
       const found = getArticleBySlug(category, slug);
       setArticle(found);

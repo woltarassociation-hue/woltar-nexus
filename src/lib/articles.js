@@ -78,7 +78,9 @@ export async function upsertArticle(data) {
   const idx = all.findIndex((a) => a.id === id);
   if (idx >= 0) all[idx] = record; else all.unshift(record);
   _cache = all;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {
+    // localStorage may be full or unavailable.
+  }
   dispatch();
 
   if (!supabase) {

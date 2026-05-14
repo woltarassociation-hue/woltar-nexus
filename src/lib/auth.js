@@ -1,4 +1,5 @@
 import { supabase, withTimeout } from "./db.js";
+import { getMemberByAuthIdRemote } from "./members.js";
 
 // ── Session locale (table members) ────────────────────────────────────────────
 
@@ -25,44 +26,42 @@ export async function signInFromMembers(username, password) {
   }
 
   const pseudo = username.trim();
-  const pwd    = password.trim();
 
-  console.log("[Auth] Recherche dans members — pseudo:", pseudo);
-
-  let data, queryError;
+  let authData;
   try {
-    ({ data, error: queryError } = await withTimeout(
-      supabase.from("members").select("id, pseudo, password, role").eq("pseudo", pseudo).maybeSingle()
-    ));
+    const { data, error } = await withTimeout(
+      supabase.auth.signInWithPassword({
+        email: pseudoToEmail(pseudo),
+        password,
+      })
+    );
+    if (error) throw error;
+    authData = data;
   } catch (e) {
-    console.log("[Auth] Erreur requête:", e.message);
-    return { user: null, error: "Erreur de connexion. Réessayez." };
-  }
-
-  if (queryError || !data) {
-    console.log("[Auth] Aucun utilisateur trouvé pour pseudo =", pseudo, "|", queryError?.message);
+    console.log("[Auth] Erreur connexion Supabase:", e.message);
     return { user: null, error: "Pseudo ou mot de passe incorrect." };
   }
 
-  console.log("[Auth] Utilisateur trouvé:", data.pseudo, "| rôle:", data.role);
-
-  const storedPwd = (data.password ?? "").trim();
-  if (storedPwd !== pwd) {
-    console.log("[Auth] Mot de passe incorrect (ne correspond pas à la valeur stockée)");
+  const authUser = authData?.user;
+  if (!authUser) {
     return { user: null, error: "Pseudo ou mot de passe incorrect." };
   }
+
+  const member = await getMemberByAuthIdRemote(authUser.id);
+  const profile = member ? null : await getUserProfile(authUser.id);
 
   const session = {
-    id:       data.id,
-    pseudo:   data.pseudo,
-    role:     data.role,
-    authType: "members",
+    id:       member?.id || authUser.id,
+    authId:   authUser.id,
+    pseudo:   member?.pseudo || profile?.username || profile?.display_name || pseudo,
+    role:     member?.role || profile?.role || "membre",
+    authType: "supabase",
   };
 
   setMemberSession(session);
   window.dispatchEvent(new Event("woltar:auth"));
 
-  console.log("[Auth] Connexion réussie:", data.pseudo, "— rôle:", data.role);
+  console.log("[Auth] Connexion réussie:", session.pseudo, "— rôle:", session.role);
   return { user: session, error: null };
 }
 

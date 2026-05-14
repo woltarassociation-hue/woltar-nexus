@@ -47,9 +47,32 @@ export function getMemberByAuthId(authId) {
   return getAllMembers().find((m) => m.authId === authId || m.auth_id === authId) || null;
 }
 
+export async function getMemberByAuthIdRemote(authId) {
+  if (!supabase || !authId) return null;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.from("members").select("*").eq("auth_id", authId).maybeSingle()
+    );
+    if (error || !data) return null;
+    const member = fromDb(data);
+    const all = getAllMembers();
+    const idx = all.findIndex((m) => m.id === member.id);
+    if (idx >= 0) all[idx] = member; else all.unshift(member);
+    _cache = all;
+    localStorage.setItem(KEY, JSON.stringify(all));
+    dispatch();
+    return member;
+  } catch (err) {
+    console.warn("[members] getMemberByAuthIdRemote failed:", err.message);
+    return null;
+  }
+}
+
 export async function upsertMember(data) {
   // Never persist password — auth is handled by Supabase Auth
-  const { password, password_hash, ...safeData } = data;
+  const safeData = { ...data };
+  delete safeData.password;
+  delete safeData.password_hash;
   const all = getAllMembers();
   const id = safeData.id || crypto.randomUUID();
   const now = new Date().toISOString();

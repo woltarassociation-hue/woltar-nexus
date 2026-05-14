@@ -45,7 +45,9 @@ export async function uploadMedia(file, name) {
         const { data } = supabase.storage.from("covers").getPublicUrl(storagePath);
         url = data?.publicUrl ?? null;
       }
-    } catch {}
+    } catch {
+      // Storage upload is optional; fall back to a data URL below.
+    }
   }
 
   if (!url) {
@@ -64,7 +66,9 @@ export async function uploadMedia(file, name) {
 
   const all = [record, ...getAllMedia()];
   _cache = all;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {
+    // localStorage may be full or unavailable.
+  }
   dispatch();
 
   if (supabase && !url.startsWith("data:")) {
@@ -87,7 +91,11 @@ export async function renameMedia(id, name) {
   localStorage.setItem(LS_KEY, JSON.stringify(all));
   dispatch();
   if (!supabase) return;
-  try { await withTimeout(supabase.from("media").update({ name }).eq("id", id)); } catch {}
+  try {
+    await withTimeout(supabase.from("media").update({ name }).eq("id", id));
+  } catch (err) {
+    console.warn("[renameMedia] Supabase failed:", err.message);
+  }
 }
 
 export async function deleteMedia(id) {

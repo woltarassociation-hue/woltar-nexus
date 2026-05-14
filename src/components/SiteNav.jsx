@@ -33,37 +33,37 @@ function NavLink({ link, active, onClick }) {
   );
 }
 
+// 4e lien droit dynamique — garde le même nombre de boutons des deux côtés
+function AuthLink({ isAdmin, user, onClick }) {
+  if (isAdmin) {
+    return (
+      <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={onClick}>
+        <span className="nav-symbol">⚙</span>
+        <span>Admin</span>
+      </Link>
+    );
+  }
+  if (user) {
+    return (
+      <Link to="/compte" className="nav-link" onClick={onClick}>
+        <span className="nav-symbol">👤</span>
+        <span>Profil</span>
+      </Link>
+    );
+  }
+  return (
+    <Link to="/login" className="nav-link nav-link--login" onClick={onClick}>
+      <span className="nav-symbol">🔑</span>
+      <span>Connexion</span>
+    </Link>
+  );
+}
+
 export default function SiteNav() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
   const { isAdmin, user } = useAuth();
   const close = () => setOpen(false);
-
-  // 4e lien droit dynamique — garde le même nombre de boutons des deux côtés
-  function AuthLink({ onClick }) {
-    if (isAdmin) {
-      return (
-        <Link to="/association/dashboard" className="nav-link nav-link--admin" onClick={onClick}>
-          <span className="nav-symbol">⚙</span>
-          <span>Admin</span>
-        </Link>
-      );
-    }
-    if (user) {
-      return (
-        <Link to="/compte" className="nav-link" onClick={onClick}>
-          <span className="nav-symbol">👤</span>
-          <span>Profil</span>
-        </Link>
-      );
-    }
-    return (
-      <Link to="/login" className="nav-link nav-link--login" onClick={onClick}>
-        <span className="nav-symbol">🔑</span>
-        <span>Connexion</span>
-      </Link>
-    );
-  }
 
   return (
     <header className="navbar">
@@ -104,7 +104,7 @@ export default function SiteNav() {
             onClick={close}
           />
         ))}
-        <AuthLink onClick={close} />
+        <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
       </nav>
 
       {/* Hamburger — mobile uniquement */}
@@ -128,7 +128,7 @@ export default function SiteNav() {
               onClick={close}
             />
           ))}
-          <AuthLink onClick={close} />
+          <AuthLink isAdmin={isAdmin} user={user} onClick={close} />
         </div>
       )}
     </header>

@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useRef, useEffect, useCallback, useState } from "react";
 import { compressImage } from "../lib/imageUtils";
 
@@ -288,7 +289,7 @@ export default function RichTextEditor({
     restoreSelection();
     document.execCommand(cmd, false, val);
     emit();
-  }, [emit]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [emit]);
 
   const applyFont = useCallback((stack) => {
     restoreSelection();
@@ -336,7 +337,7 @@ export default function RichTextEditor({
     restoreSelection();
     document.execCommand("insertHTML", false, html);
     emit();
-  }, [emit]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [emit]);
 
   const insertLink = useCallback(() => {
     restoreSelection();

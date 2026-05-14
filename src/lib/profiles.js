@@ -84,7 +84,9 @@ export async function seedDefaultProfiles() {
           // Supabase a déjà des profils — charger depuis Supabase
           await loadFromSupabase();
         }
-      } catch {}
+      } catch (err) {
+        console.warn("[profiles] Local/Supabase sync failed:", err.message);
+      }
     }
     return;
   }

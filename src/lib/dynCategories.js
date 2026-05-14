@@ -61,7 +61,9 @@ export async function upsertCategory(data) {
   const idx = all.findIndex((c) => c.id === id);
   if (idx >= 0) all[idx] = record; else all.push(record);
   _cache = all;
-  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {}
+  try { localStorage.setItem(LS_KEY, JSON.stringify(all)); } catch {
+    // localStorage may be full or unavailable.
+  }
   dispatch();
 
   if (!supabase) return { record, ok: false, error: "Supabase non configuré" };
@@ -101,5 +103,7 @@ export async function reorderCategory(id, direction) {
       toDb(all[idx]),
       toDb(all[swapIdx < idx ? swapIdx : idx]),
     ]));
-  } catch {}
+  } catch (err) {
+    console.warn("[reorderCategory]", err.message);
+  }
 }

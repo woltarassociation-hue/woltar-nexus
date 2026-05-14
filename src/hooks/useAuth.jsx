@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { useState, useEffect, createContext, useContext } from "react";
 import { supabase } from "../lib/db.js";
 import {
@@ -7,44 +8,71 @@ import {
   hasPermission as checkPerm,
   getMemberSession,
 } from "../lib/auth.js";
+import { getMemberByAuthIdRemote } from "../lib/members.js";
 
 const AuthContext = createContext(null);
 
 function profileFromMemberSession(ms) {
-  return { id: ms.id, role: ms.role, username: ms.pseudo, authType: "members" };
+  return { id: ms.id, authId: ms.authId, role: ms.role, username: ms.pseudo, authType: ms.authType };
+}
+
+function userFromMemberSession(ms) {
+  return { ...ms, id: ms.authId || ms.id };
+}
+
+function isSupabaseMemberSession(ms) {
+  return ms?.authType === "supabase" && ms.authId;
+}
+
+async function resolveProfile(user) {
+  if (!user?.id) return null;
+  const member = await getMemberByAuthIdRemote(user.id);
+  if (member) {
+    return {
+      id: member.id,
+      authId: user.id,
+      role: member.role || "membre",
+      username: member.pseudo,
+      authType: "supabase",
+    };
+  }
+  return getUserProfile(user.id);
 }
 
 export function AuthProvider({ children }) {
   // undefined = chargement en cours, null = non connecté
-  const [user, setUser]       = useState(undefined);
-  const [profile, setProfile] = useState(null);
+  const [user, setUser] = useState(() => {
+    const ms = getMemberSession();
+    return isSupabaseMemberSession(ms) ? userFromMemberSession(ms) : supabase ? undefined : null;
+  });
+  const [profile, setProfile] = useState(() => {
+    const ms = getMemberSession();
+    return isSupabaseMemberSession(ms) ? profileFromMemberSession(ms) : null;
+  });
 
   useEffect(() => {
     // 1. Session locale (table members) — synchrone, prioritaire
     const ms = getMemberSession();
-    if (ms) {
-      setUser(ms);
-      setProfile(profileFromMemberSession(ms));
+    if (isSupabaseMemberSession(ms)) {
       return; // pas besoin d'écouter Supabase Auth
     }
 
     // 2. Supabase Auth
     if (!supabase) {
-      setUser(null);
       return;
     }
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) getUserProfile(u.id).then(setProfile);
+      if (u) resolveProfile(u).then(setProfile);
       else setUser(null);
     });
 
     const unsub = onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      if (u) getUserProfile(u.id).then(setProfile);
+      if (u) resolveProfile(u).then(setProfile);
       else setProfile(null);
     });
 
@@ -55,8 +83,8 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const sync = () => {
       const ms = getMemberSession();
-      if (ms) {
-        setUser(ms);
+      if (isSupabaseMemberSession(ms)) {
+        setUser(userFromMemberSession(ms));
         setProfile(profileFromMemberSession(ms));
       } else {
         setUser(null);

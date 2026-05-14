@@ -25,7 +25,8 @@ export async function loadAffiche() {
     if (!data) return;
     const record = fromDb(data);
     // Retire l'id interne avant de stocker localement
-    const { id: _id, ...rest } = record;
+    const rest = { ...record };
+    delete rest.id;
     localStorage.setItem(LS_KEY, JSON.stringify(rest));
     dispatch();
   } catch (err) {

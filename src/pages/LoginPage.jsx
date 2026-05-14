@@ -26,13 +26,6 @@ export default function LoginPage() {
     navigate(dest, { replace: true });
   };
 
-  const bypassAdmin = () => {
-    const session = { id: "temp-admin", pseudo: "Administrateur", role: "admin", authType: "members" };
-    localStorage.setItem("woltar_member_session", JSON.stringify(session));
-    window.dispatchEvent(new Event("woltar:auth"));
-    navigate("/association/dashboard", { replace: true });
-  };
-
   return (
     <div className="login-page">
       <div className="login-card">
@@ -77,9 +70,6 @@ export default function LoginPage() {
 
         <Link to="/" className="assoc-register-link">← Retour au site</Link>
 
-        <button onClick={bypassAdmin} className="login-bypass-btn" title="Accès temporaire">
-          ◈
-        </button>
       </div>
     </div>
   );

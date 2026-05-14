@@ -80,7 +80,13 @@ export default function StatsSection() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    fetchDashboardStats().then((data) => {
+      if (data) { setStats(data); setRefreshed(new Date()); }
+      else setError("Impossible de charger les statistiques.");
+      setLoading(false);
+    });
+  }, []);
 
   if (loading) return (
     <div className="rpx-panel">

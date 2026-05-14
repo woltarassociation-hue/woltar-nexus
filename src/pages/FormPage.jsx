@@ -3,9 +3,6 @@ import { useParams, Navigate } from "react-router-dom";
 import { getForm, saveResponse, ALL_RP_STATS } from "../lib/forms";
 import SiteNav from "../components/SiteNav";
 
-const STAT_NAMES = ["Agilité", "Perception", "Chance", "Mémoire", "Intelligence", "Créativité", "Charisme", "Force"];
-const TOTAL_POINTS = 40;
-
 function formatDate(iso) {
   if (!iso) return "";
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
