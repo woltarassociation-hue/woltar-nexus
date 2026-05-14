@@ -15,6 +15,7 @@ import AccountPage from "./pages/AccountPage.jsx";
 import TicketsPage from "./pages/TicketsPage.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import PollsPage from "./pages/PollsPage.jsx";
+import ProfilePage from "./pages/ProfilePage.jsx";
 import { getPublishedByCategories, getFontStack } from "./lib/articles.js";
 import { getSubcategories } from "./lib/subcategories.js";
 import { seedDefaultProfiles } from "./lib/profiles.js";
@@ -121,6 +122,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/profil/:username" element={<ProfilePage />} />
         <Route path="/tickets" element={<TicketsPage />} />
         <Route path="/formulaire/:formId" element={<FormPage />} />
         <Route path="/:category/:slug" element={<ArticleOrSubcat />} />

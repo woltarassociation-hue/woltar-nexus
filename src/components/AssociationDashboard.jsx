@@ -372,11 +372,10 @@ export default function AssociationDashboard() {
   return (
     <div className="dashboard">
       <header className="db-header">
-        <button className="db-back-btn" onClick={() => navigate("/")}>
-          ← Retour au site
-        </button>
         <div className="db-header-brand">
-          <img src="/logo_woltar.png" alt="Woltar" className="db-logo" />
+          <button className="db-logo-btn" onClick={() => navigate("/")} title="Retour à l'accueil">
+            <img src="/logo_woltar.png" alt="Woltar — Retour accueil" className="db-logo" />
+          </button>
           <span className="db-header-title">
             {({ studio: "Studio", profils: "Profils & Accès", tickets: "Tickets", mediatheque: "Médiathèque", annonces: "Annonces", stats: "Statistiques", parametres: "Paramètres" })[section] || "Admin"}
           </span>
@@ -1179,6 +1178,13 @@ function ProfilesSection() {
               )}
             </div>
             <div className="prof-card-actions">
+              <button
+                className="prof-action-btn prof-action-btn--view"
+                onClick={() => window.open(`/profil/${p.username}`, "_blank")}
+                title="Voir le profil public"
+              >
+                👁 Profil
+              </button>
               <button className="prof-action-btn prof-action-btn--edit" onClick={() => handleEdit(p)}>
                 ✏ Modifier
               </button>

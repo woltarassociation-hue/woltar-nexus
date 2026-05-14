@@ -135,6 +135,9 @@ function AccountView({ user, profile, navigate }) {
           {getRoleLabel(profile?.role)}
         </div>
         <BadgeStrip allBadges={allBadges} userBadges={userBadges} />
+        <Link to={`/profil/${pseudo}`} className="account-pubprofile-link">
+          👁 Voir mon profil public →
+        </Link>
 
         <div className="setup-form account-form">
           <div className="setup-field">
